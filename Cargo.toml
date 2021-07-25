@@ -1,0 +1,10 @@
+[workspace]
+
+members = [
+    "src/midi-tools",
+    "src/midi-tools-derive",
+]
+
+[profile.release]
+codegen-units = 1
+lto = true
