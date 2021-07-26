@@ -1,5 +1,6 @@
 use super::events::*;
-use super::{ChannelEvent, CastEventDelta, MIDINum, MIDINumInto, KeyEvent, MIDIEvent};
+use super::{CastEventDelta, ChannelEvent, KeyEvent, MIDIEvent};
+use crate::num::{MIDINum, MIDINumInto};
 use derive::EventImpl;
 
 #[derive(EventImpl)]
@@ -14,6 +15,4 @@ pub enum Event<D: MIDINum> {
     ControlChange(Box<ControlChangeEvent<D>>),
 }
 
-impl<D: MIDINum> Event<D> {
-    
-}
+impl<D: MIDINum> Event<D> {}

@@ -1,11 +1,12 @@
+use crate::num::{MIDINum, MIDINumInto};
 use events::Event;
-use events::{
-    CastEventDelta, ChannelEvent, MIDINum, MIDINumInto, KeyEvent, MIDIEvent, NoteOnEvent,
-};
+use events::{CastEventDelta, ChannelEvent, KeyEvent, MIDIEvent, NoteOnEvent};
+
 use num_traits::Num;
 
 pub mod events;
 pub mod notes;
+pub mod num;
 
 fn main() {
     let a = NoteOnEvent::new(1, 1, 1, 1);

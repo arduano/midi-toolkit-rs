@@ -1,7 +1,6 @@
-mod delta;
 mod event;
 mod events;
-pub use delta::{MIDINum, MIDINumInto};
+use crate::num::{MIDINum, MIDINumInto};
 pub use event::Event;
 pub use events::*;
 
@@ -20,6 +19,8 @@ pub trait MIDIEvent<T: MIDINum> {
 
 pub trait CastEventDelta<DT: MIDINum, Ev: MIDIEvent<DT>>: Clone {
     /// Casts the delta time of MIDIEvent to a different type
+    ///
+    /// By default, supports: i32, i64, u32, u64, f32, f64
     /// ## Example
     /// ```
     /// use midi_tools::events::{CastEventDelta, Event, MIDIEvent};

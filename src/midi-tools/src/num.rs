@@ -3,9 +3,10 @@ use num_traits::Num;
 pub trait MIDINumInto<T: MIDINum> {
     /// Casts the midi time type to another supported type.
     ///
+    /// By default, supports: i32, i64, u32, u64, f32, f64
     /// ## Example
     /// ```
-    /// use midi_tools::events::{CastEventDelta};
+    /// use midi_tools::num::{MIDINumInto};
     ///
     /// let dt_i32: i32 = 10;
     /// let dt_u64: u64 = 10;
@@ -62,7 +63,7 @@ impl MIDINum for f64 {}
 
 #[cfg(test)]
 mod tests {
-    use crate::events::MIDINumInto;
+    use crate::num::{MIDINumInto};
     #[test]
     fn casts_delta() {
         let dt_i32: i32 = 10;
