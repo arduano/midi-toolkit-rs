@@ -1,15 +1,34 @@
 use num_traits::Num;
 
-pub trait DeltaNumInto<T: DeltaNum> {
-    fn delta_into(&self) -> T;
+pub trait MIDINumInto<T: MIDINum> {
+    /// Casts the midi time type to another supported type.
+    ///
+    /// ## Example
+    /// ```
+    /// use midi_tools::events::{CastEventDelta};
+    ///
+    /// let dt_i32: i32 = 10;
+    /// let dt_u64: u64 = 10;
+    ///
+    /// let dt_f32: f32 = dt_i32.midi_num_into();
+    /// let dt_f64: f64 = dt_i32.midi_num_into();
+    /// let dt_u32: u32 = dt_u64.midi_num_into();
+    /// let dt_i64: i64 = dt_u64.midi_num_into();
+    ///
+    /// assert_eq!(dt_f32, 10f32);
+    /// assert_eq!(dt_f64, 10f64);
+    /// assert_eq!(dt_u32, 10u32);
+    /// assert_eq!(dt_i64, 10i64);
+    /// ```
+    fn midi_num_into(&self) -> T;
 }
 
-pub trait DeltaNum: Num + Copy + Sized {}
+pub trait MIDINum: Num + Copy + Sized {}
 
 macro_rules! impl_delta_from_to {
     ($from:ident, $to:ident) => {
-        impl DeltaNumInto<$to> for $from {
-            fn delta_into(&self) -> $to {
+        impl MIDINumInto<$to> for $from {
+            fn midi_num_into(&self) -> $to {
                 *self as $to
             }
         }
@@ -34,9 +53,29 @@ impl_delta_from!(u64);
 impl_delta_from!(f32);
 impl_delta_from!(f64);
 
-impl DeltaNum for i32 {}
-impl DeltaNum for u32 {}
-impl DeltaNum for i64 {}
-impl DeltaNum for u64 {}
-impl DeltaNum for f32 {}
-impl DeltaNum for f64 {}
+impl MIDINum for i32 {}
+impl MIDINum for u32 {}
+impl MIDINum for i64 {}
+impl MIDINum for u64 {}
+impl MIDINum for f32 {}
+impl MIDINum for f64 {}
+
+#[cfg(test)]
+mod tests {
+    use crate::events::MIDINumInto;
+    #[test]
+    fn casts_delta() {
+        let dt_i32: i32 = 10;
+        let dt_u64: u64 = 10;
+
+        let dt_f32: f32 = dt_i32.midi_num_into();
+        let dt_f64: f64 = dt_i32.midi_num_into();
+        let dt_u32: u32 = dt_u64.midi_num_into();
+        let dt_i64: i64 = dt_u64.midi_num_into();
+
+        assert_eq!(dt_f32, 10f32);
+        assert_eq!(dt_f64, 10f64);
+        assert_eq!(dt_u32, 10u32);
+        assert_eq!(dt_i64, 10i64);
+    }
+}
