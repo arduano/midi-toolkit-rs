@@ -30,7 +30,7 @@ pub fn to_vec<T, I: Iterator<Item = T> + Sized>(iter: I) -> Vec<T> {
     FromIterator::from_iter(iter)
 }
 
-/// Converts an iterator into a vector.
+/// Converts a result iterator into a vector result.
 ///
 /// Useful when you to cache the result of an iterator for future use.
 ///
