@@ -7,7 +7,7 @@ use crate::{events::MIDIEvent, num::MIDINum, unwrap};
 /// Similar to scale_time, except only takes the multiplier.
 /// ## Example
 ///```
-///use midi_tools::{events::Event, pipe, sequence::{event::scale_time, to_vec, wrap_ok}};
+///use midi_tools::{events::Event, pipe, sequence::{event::scale_time, to_vec_result, wrap_ok}};
 ///
 ///let events = vec![
 ///    Event::new_note_on_event(100.0f64, 0, 64, 127),
@@ -16,15 +16,20 @@ use crate::{events::MIDIEvent, num::MIDINum, unwrap};
 ///    Event::new_note_off_event(80.0f64, 0, 64),
 ///];
 ///
-///let changed = pipe! { events.into_iter()|>wrap_ok()|>scale_time(1.5)|>to_vec() };
+///let changed = pipe! {
+///    events.into_iter()
+///    |>wrap_ok()
+///    |>scale_time(1.5)
+///    |>to_vec_result().unwrap()
+///};
 ///
 ///assert_eq!(
 ///    changed,
 ///    vec![
-///        Ok(Event::new_note_on_event(150.0f64, 0, 64, 127)),
-///        Ok(Event::new_note_off_event(75.0f64, 0, 64)),
-///        Ok(Event::new_note_on_event(45.0f64, 0, 64, 127)),
-///        Ok(Event::new_note_off_event(120.0f64, 0, 64)),
+///        Event::new_note_on_event(150.0f64, 0, 64, 127),
+///        Event::new_note_off_event(75.0f64, 0, 64),
+///        Event::new_note_on_event(45.0f64, 0, 64, 127),
+///        Event::new_note_off_event(120.0f64, 0, 64),
 ///    ]
 ///)
 ///```
@@ -51,7 +56,7 @@ mod tests {
     };
 
     #[test]
-    fn delta_change() {
+    fn time_change() {
         let events = vec![
             Event::new_note_on_event(100.0f64, 0, 64, 127),
             Event::new_note_off_event(50.0f64, 0, 64),
@@ -63,8 +68,7 @@ mod tests {
             events.into_iter()
             |>wrap_ok()
             |>scale_time(1.5)
-            |>to_vec_result()
-            .unwrap()
+            |>to_vec_result().unwrap()
         };
 
         assert_eq!(
@@ -79,7 +83,7 @@ mod tests {
     }
 
     #[test]
-    fn delta_change_ints() {
+    fn time_change_ints() {
         let events = vec![
             Event::new_note_on_event(100, 0, 64, 127),
             Event::new_note_off_event(50, 0, 64),
