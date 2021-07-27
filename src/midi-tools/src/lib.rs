@@ -2,6 +2,7 @@
 #![feature(associated_type_bounds)]
 
 pub mod events;
+pub mod io;
 pub mod notes;
 pub mod num;
 pub mod sequence;
@@ -28,5 +29,18 @@ macro_rules! pipe {
     };
     ($var:tt) => {
         $var
+    };
+}
+
+#[macro_export]
+macro_rules! unwrap {
+    ($val:expr) => {
+        match $val {
+            Ok(v) => v,
+            Err(e) => {
+                yield Err(e);
+                panic!("Iterator requested the next item after an error occured");
+            }
+        }
     };
 }
