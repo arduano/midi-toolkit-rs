@@ -27,6 +27,7 @@ dependencies = [
  "gen-iter",
  "midi-tools-rs-derive",
  "num-traits",
+ "to_vec",
 ]
 
 [[package]]
