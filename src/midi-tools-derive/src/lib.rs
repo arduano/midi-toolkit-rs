@@ -4,7 +4,6 @@ use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use proc_macro_error::{abort_call_site, proc_macro_error, ResultExt};
 use quote::{quote, ToTokens};
 use syn::{self, ext::IdentExt, DataEnum, DataStruct, DeriveInput, Fields, Variant};
-use to_vec::ToVec;
 
 fn find_attr_fields<'a>(fields: &'a Fields, name: &str) -> Option<&'a Ident> {
     let fields = fields
@@ -15,7 +14,7 @@ fn find_attr_fields<'a>(fields: &'a Fields, name: &str) -> Option<&'a Ident> {
                 Some(ident) => ident.unraw().to_string().eq(name),
             })
         })
-        .to_vec();
+        .collect::<Vec<_>>();
     match fields.len() {
         0 => None,
         1 => fields[0].ident.as_ref(),
@@ -494,11 +493,11 @@ pub fn event_impl(input: TokenStream) -> TokenStream {
                         )
                     })
                     .map(map)
-                    .to_vec(),
+                    .collect::<Vec<_>>(),
             )
         }
 
-        let variants = variants.iter().to_vec();
+        let variants = variants.iter().collect::<Vec<_>>();
 
         let clone_match = create_match(&variants, |v| {
             let ident = &v.0.ident;

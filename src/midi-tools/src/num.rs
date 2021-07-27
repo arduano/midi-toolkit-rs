@@ -6,20 +6,20 @@ pub trait MIDINumInto<T: MIDINum> {
     /// By default, supports: i32, i64, u32, u64, f32, f64
     /// ## Example
     /// ```
-    /// use midi_tools::num::{MIDINumInto};
+    ///use midi_tools::num::{MIDINumInto};
     ///
-    /// let dt_i32: i32 = 10;
-    /// let dt_u64: u64 = 10;
+    ///let dt_i32: i32 = 10;
+    ///let dt_u64: u64 = 10;
     ///
-    /// let dt_f32: f32 = dt_i32.midi_num_into();
-    /// let dt_f64: f64 = dt_i32.midi_num_into();
-    /// let dt_u32: u32 = dt_u64.midi_num_into();
-    /// let dt_i64: i64 = dt_u64.midi_num_into();
+    ///let dt_f32: f32 = dt_i32.midi_num_into();
+    ///let dt_f64: f64 = dt_i32.midi_num_into();
+    ///let dt_u32: u32 = dt_u64.midi_num_into();
+    ///let dt_i64: i64 = dt_u64.midi_num_into();
     ///
-    /// assert_eq!(dt_f32, 10f32);
-    /// assert_eq!(dt_f64, 10f64);
-    /// assert_eq!(dt_u32, 10u32);
-    /// assert_eq!(dt_i64, 10i64);
+    ///assert_eq!(dt_f32, 10f32);
+    ///assert_eq!(dt_f64, 10f64);
+    ///assert_eq!(dt_u32, 10u32);
+    ///assert_eq!(dt_i64, 10i64);
     /// ```
     fn midi_num_into(&self) -> T;
 }

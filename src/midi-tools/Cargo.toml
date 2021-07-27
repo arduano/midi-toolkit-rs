@@ -13,4 +13,3 @@ name="midi_tools"
 gen-iter = "0.2.0"
 num-traits = "0.2.14"
 derive = { path = "../midi-tools-derive", package = "midi-tools-rs-derive" }
-to_vec = "0.1.0"
