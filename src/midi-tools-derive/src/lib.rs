@@ -55,10 +55,12 @@ pub fn midi_event(input: TokenStream) -> TokenStream {
         let mut generated_traits = Vec::new();
 
         generated_trait_impl.push(quote! {
+            #[inline(always)]
             fn delta(&self) -> D {
                 self.#delta_ident
             }
 
+            #[inline(always)]
             fn delta_mut(&mut self) -> &mut D {
                 &mut self.#delta_ident
             }
@@ -147,10 +149,12 @@ pub fn midi_event(input: TokenStream) -> TokenStream {
 
                 generated_traits.push(quote! {
                     impl #impl_generics KeyEvent for #name #ty_generics #where_clause {
+                        #[inline(always)]
                         fn key(&self) -> u8 {
                             self.#ident
                         }
 
+                        #[inline(always)]
                         fn key_mut(&mut self) -> &mut u8 {
                             &mut self.#ident
                         }
@@ -242,10 +246,12 @@ pub fn midi_event(input: TokenStream) -> TokenStream {
 
                 generated_traits.push(quote! {
                     impl #impl_generics ChannelEvent for #name #ty_generics #where_clause {
+                        #[inline(always)]
                         fn channel(&self) -> u8 {
                             self.#ident
                         }
 
+                        #[inline(always)]
                         fn channel_mut(&mut self) -> &mut u8 {
                             &mut self.#ident
                         }
@@ -311,6 +317,7 @@ pub fn cast_event_delta(input: TokenStream) -> TokenStream {
             where
                 TT: MIDINum + MIDINumInto<DT>,
             {
+                #[inline(always)]
                 fn cast_delta(&self) -> #name <DT> {
                     #name {
                         #(#generated_cast)*
@@ -547,6 +554,7 @@ pub fn event_impl(input: TokenStream) -> TokenStream {
                 event_wrap_impl.push(quote! {
                     impl #impl_generics #struct_ident #ty_generics {
                         #[doc=#doc_str]
+                        #[inline(always)]
                         pub fn as_event(self) -> #name #ty_generics {
                             #name::#ident(Box::new(self))
                         }
@@ -556,6 +564,7 @@ pub fn event_impl(input: TokenStream) -> TokenStream {
                 event_wrap_impl.push(quote! {
                     impl #impl_generics #struct_ident #ty_generics {
                         #[doc=#doc_str]
+                        #[inline(always)]
                         pub fn as_event(self) -> #name #ty_generics {
                             #name::#ident(self)
                         }
@@ -566,48 +575,59 @@ pub fn event_impl(input: TokenStream) -> TokenStream {
 
         let gen = quote! {
             impl #impl_generics Clone for #name #ty_generics #where_clause {
+                #[inline(always)]
                 fn clone(&self) -> #name #ty_generics {
                     #clone_match
                 }
             }
 
             impl#impl_generics MIDIEvent #ty_generics for #name #ty_generics #where_clause {
+                #[inline(always)]
                 fn delta(&self) -> D {
                     #delta
                 }
 
+                #[inline(always)]
                 fn delta_mut(&mut self) -> &mut D {
                     #delta_mut
                 }
 
+                #[inline(always)]
                 fn key(&self) -> Option<u8> {
                     #key
                 }
 
+                #[inline(always)]
                 fn key_mut(&mut self) -> Option<&mut u8> {
                     #key_mut
                 }
 
+                #[inline(always)]
                 fn channel(&self) -> Option<u8> {
                     #channel
                 }
 
+                #[inline(always)]
                 fn channel_mut(&mut self) -> Option<&mut u8> {
                     #channel_mut
                 }
 
+                #[inline(always)]
                 fn as_key_event<'a>(&'a self) -> Option<Box<&'a dyn KeyEvent>> {
                     #as_key_event
                 }
 
+                #[inline(always)]
                 fn as_key_event_mut<'a>(&'a mut self) -> Option<Box<&'a mut dyn KeyEvent>> {
                     #as_key_event_mut
                 }
 
+                #[inline(always)]
                 fn as_channel_event<'a>(&'a self) -> Option<Box<&'a dyn ChannelEvent>> {
                     #as_channel_event
                 }
 
+                #[inline(always)]
                 fn as_channel_event_mut<'a>(&'a mut self) -> Option<Box<&'a mut dyn ChannelEvent>> {
                     #as_channel_event_mut
                 }
@@ -619,6 +639,7 @@ pub fn event_impl(input: TokenStream) -> TokenStream {
             where
                 TT: MIDINum + MIDINumInto<DT>,
             {
+                #[inline(always)]
                 fn cast_delta(&self) -> #name<DT> {
                     #cast_delta
                 }
