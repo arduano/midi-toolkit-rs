@@ -1,16 +1,14 @@
-use gen_iter::GenIter;
-
-use crate::{events::MIDIEvent, num::MIDINum, unwrap};
+use crate::{events::MIDIEvent, num::MIDINum};
 
 /// Change the PPQ of an event sequence.
 ///
-/// Similar to [`scale_time`](crate::sequence::event::scale_time), except does `new_delta = old_delta * to / from`.
+/// Similar to [`scale_event_time`](crate::sequence::event::scale_event_time), except does `new_delta = old_delta * to / from`.
 /// ## Example
 ///```
 ///use midi_tools::{
 ///    events::Event,
 ///    pipe,
-///    sequence::{event::change_ppq, to_vec_result, wrap_ok},
+///    sequence::{event::scale_event_ppq, to_vec_result, wrap_ok},
 ///};
 ///
 ///let events = vec![
@@ -23,7 +21,7 @@ use crate::{events::MIDIEvent, num::MIDINum, unwrap};
 ///let changed = pipe! {
 ///    events.into_iter()
 ///    |>wrap_ok()
-///    |>change_ppq(64.0, 96.0)
+///    |>scale_event_ppq(64.0, 96.0)
 ///    |>to_vec_result().unwrap()
 ///};
 ///
@@ -37,18 +35,21 @@ use crate::{events::MIDIEvent, num::MIDINum, unwrap};
 ///    ]
 ///)
 ///```
-pub fn change_ppq<T: MIDINum, E: MIDIEvent<T>, Err, I: Iterator<Item = Result<E, Err>> + Sized>(
+pub fn scale_event_ppq<
+    T: MIDINum,
+    E: MIDIEvent<T>,
+    Err,
+    I: Iterator<Item = Result<E, Err>> + Sized,
+>(
     iter: I,
     from: T,
     to: T,
 ) -> impl Iterator<Item = Result<E, Err>> {
-    GenIter(move || {
-        for e in iter {
-            let mut e = unwrap!(e);
-            let delta = e.delta_mut();
-            *delta = *delta * to / from;
-            yield Ok(e);
-        }
+    iter.map(move |e| {
+        let mut e = e?;
+        let delta = e.delta_mut();
+        *delta = *delta * to / from;
+        Ok(e)
     })
 }
 
@@ -57,7 +58,7 @@ mod tests {
     use crate::{
         events::Event,
         pipe,
-        sequence::{event::change_ppq, to_vec_result, wrap_ok},
+        sequence::{event::scale_event_ppq, to_vec_result, wrap_ok},
     };
 
     #[test]
@@ -72,7 +73,7 @@ mod tests {
         let changed = pipe! {
             events.into_iter()
             |>wrap_ok()
-            |>change_ppq(64.0, 96.0)
+            |>scale_event_ppq(64.0, 96.0)
             |>to_vec_result().unwrap()
         };
 
@@ -99,7 +100,7 @@ mod tests {
         let changed = pipe! {
             events.into_iter()
             |>wrap_ok()
-            |>change_ppq(64, 96)
+            |>scale_event_ppq(64, 96)
             |>to_vec_result().unwrap()
         };
 
@@ -126,7 +127,7 @@ mod tests {
         let changed = pipe! {
             events.into_iter()
             |>wrap_ok()
-            |>change_ppq(3, 2)
+            |>scale_event_ppq(3, 2)
             |>to_vec_result().unwrap()
         };
 

@@ -1,13 +1,11 @@
-use gen_iter::GenIter;
-
-use crate::{events::MIDIEvent, num::MIDINum, unwrap};
+use crate::{events::MIDIEvent, num::MIDINum};
 
 /// Scale each delta time of an event sequence.
 ///
-/// Similar to [`change_ppq`](crate::sequence::event::change_ppq), except only takes the multiplier.
+/// Similar to [`scale_event_ppq`](crate::sequence::event::scale_event_ppq), except only takes the multiplier.
 /// ## Example
 ///```
-///use midi_tools::{events::Event, pipe, sequence::{event::scale_time, to_vec_result, wrap_ok}};
+///use midi_tools::{events::Event, pipe, sequence::{event::scale_event_time, to_vec_result, wrap_ok}};
 ///
 ///let events = vec![
 ///    Event::new_note_on_event(100.0f64, 0, 64, 127),
@@ -19,7 +17,7 @@ use crate::{events::MIDIEvent, num::MIDINum, unwrap};
 ///let changed = pipe! {
 ///    events.into_iter()
 ///    |>wrap_ok()
-///    |>scale_time(1.5)
+///    |>scale_event_time(1.5)
 ///    |>to_vec_result().unwrap()
 ///};
 ///
@@ -33,17 +31,20 @@ use crate::{events::MIDIEvent, num::MIDINum, unwrap};
 ///    ]
 ///)
 ///```
-pub fn scale_time<T: MIDINum, E: MIDIEvent<T>, Err, I: Iterator<Item = Result<E, Err>> + Sized>(
+pub fn scale_event_time<
+    T: MIDINum,
+    E: MIDIEvent<T>,
+    Err,
+    I: Iterator<Item = Result<E, Err>> + Sized,
+>(
     iter: I,
     multiplier: T,
 ) -> impl Iterator<Item = Result<E, Err>> {
-    GenIter(move || {
-        for e in iter {
-            let mut e = unwrap!(e);
-            let delta = e.delta_mut();
-            *delta = *delta * multiplier;
-            yield Ok(e);
-        }
+    iter.map(move |e| {
+        let mut e = e?;
+        let delta = e.delta_mut();
+        *delta = *delta * multiplier;
+        Ok(e)
     })
 }
 
@@ -52,7 +53,7 @@ mod tests {
     use crate::{
         events::Event,
         pipe,
-        sequence::{event::scale_time, to_vec_result, wrap_ok},
+        sequence::{event::scale_event_time, to_vec_result, wrap_ok},
     };
 
     #[test]
@@ -67,7 +68,7 @@ mod tests {
         let changed = pipe! {
             events.into_iter()
             |>wrap_ok()
-            |>scale_time(1.5)
+            |>scale_event_time(1.5)
             |>to_vec_result().unwrap()
         };
 
@@ -94,7 +95,7 @@ mod tests {
         let changed = pipe! {
             events.into_iter()
             |>wrap_ok()
-            |>scale_time(2)
+            |>scale_event_time(2)
             |>to_vec_result()
             .unwrap()
         };

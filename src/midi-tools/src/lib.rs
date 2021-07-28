@@ -15,6 +15,9 @@ macro_rules! pipe {
     ($var:tt |> $namespace1:ident :: $function: ident($($params: expr),*) $($calls:tt)*) => {
         pipe!({$namespace1::$function($var, $($params),*)} $($calls)*)
     };
+    ($var:tt |> $namespace1:ident :: < $($types: tt ),+ > :: $function: ident($($params: expr),*) $($calls:tt)*) => {
+        pipe!({$namespace1::<$($types,)+>::$function($var, $($params),*)} $($calls)*)
+    };
     ($var:tt |> $namespace1:ident :: $namespace2:ident :: $function: ident($($params: expr),*) $($calls:tt)*) => {
         pipe!({$namespace1::$namespace2::$function($var, $($params),*)} $($calls)*)
     };
