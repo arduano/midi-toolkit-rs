@@ -1,17 +1,19 @@
-use std::time::Instant;
+use std::{fs::File, time::Instant};
 
 use midi_tools::{
     events::Event,
-    io::midi_file::{MIDIFile, RAMCache},
+    io::{
+        midi_file::MIDIFile,
+        readers::{DiskReader, RAMReader},
+    },
     pipe,
     sequence::unwrap_items,
 };
 
 pub fn main() {
     println!("Opening midi...");
-    let file = MIDIFile::new(
+    let file = MIDIFile::<RAMReader>::new(
         "D:/Midis/Ra Ra Rasputin Ultimate Black MIDI Final.mid",
-        RAMCache::CacheIfPossible,
         None,
     )
     .unwrap();

@@ -1,17 +1,17 @@
 use crate::events::*;
 
-use super::{errors::MIDIParseError, readers::TrackReader};
+use super::{errors::MIDIParseError, readers::{FullRamTrackReader, TrackReader}};
 
 /// test [`midi_tools::events::NoteOnEvent`]
 pub struct TrackParser {
-    reader: Box<dyn TrackReader>,
+    reader: FullRamTrackReader,
     pushback: i16,
     prev_command: u8,
     ended: bool,
 }
 
 impl TrackParser {
-    pub fn new(reader: Box<dyn TrackReader>) -> Self {
+    pub fn new(reader: FullRamTrackReader) -> Self {
         Self {
             reader,
             pushback: -1,

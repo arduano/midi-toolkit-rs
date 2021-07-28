@@ -1,7 +1,4 @@
-use std::{
-    io::{Read, Seek, SeekFrom},
-    sync::Arc,
-};
+use std::{io::SeekFrom, sync::Arc};
 
 use super::{
     errors::{MIDILoadError, MIDIParseError},
@@ -10,8 +7,8 @@ use super::{
 
 use std::fmt::Debug;
 #[derive(Debug)]
-pub struct DiskReader {
-    reader: Box<dyn ReadSeek>,
+pub struct DiskReader<T: ReadSeek> {
+    reader: T,
     length: u64,
 }
 
@@ -30,7 +27,7 @@ macro_rules! midi_error {
     };
 }
 
-fn get_reader_len(reader: &mut Box<dyn ReadSeek>) -> Result<u64, MIDILoadError> {
+fn get_reader_len<T: ReadSeek>(reader: &mut T) -> Result<u64, MIDILoadError> {
     let mut get = || {
         let pos = reader.seek(SeekFrom::End(0))?;
         reader.seek(SeekFrom::Start(0))?;
@@ -40,22 +37,19 @@ fn get_reader_len(reader: &mut Box<dyn ReadSeek>) -> Result<u64, MIDILoadError> 
     midi_error!(get())
 }
 
-impl DiskReader {
-    pub fn new(mut reader: Box<dyn ReadSeek>) -> Result<DiskReader, MIDILoadError> {
+impl<T: ReadSeek> DiskReader<T> {
+    pub fn new(mut reader: T) -> Result<DiskReader<T>, MIDILoadError> {
         let len = get_reader_len(&mut reader);
 
         match len {
             Err(e) => Err(e),
-            Ok(length) => Ok(DiskReader {
-                reader: reader,
-                length,
-            }),
+            Ok(length) => Ok(DiskReader { reader, length }),
         }
     }
 }
 
 impl RAMReader {
-    pub fn new(mut reader: Box<dyn ReadSeek>) -> Result<RAMReader, MIDILoadError> {
+    pub fn new<T: ReadSeek>(mut reader: T) -> Result<RAMReader, MIDILoadError> {
         let len = get_reader_len(&mut reader);
 
         match len {
@@ -96,10 +90,10 @@ pub trait MIDIReader: Debug {
     fn is_end(&mut self) -> Result<bool, MIDILoadError>;
     fn skip(&mut self, bytes: u64) -> Result<u64, MIDILoadError>;
 
-    fn open_reader(&self, start: u64, len: u64, ram_cache: bool) -> Box<dyn TrackReader>;
+    fn open_reader(&self, start: u64, len: u64, ram_cache: bool) -> FullRamTrackReader;
 }
 
-impl MIDIReader for DiskReader {
+impl<T: ReadSeek> MIDIReader for DiskReader<T> {
     fn assert_header(&mut self, text: &str) -> Result<(), MIDILoadError> {
         let reader = &mut self.reader;
         let chars = text.as_bytes();
@@ -153,7 +147,7 @@ impl MIDIReader for DiskReader {
         midi_error!(self.reader.seek(SeekFrom::Start(to)))
     }
 
-    fn open_reader(&self, start: u64, len: u64, ram_cache: bool) -> Box<dyn TrackReader> {
+    fn open_reader(&self, start: u64, len: u64, ram_cache: bool) -> FullRamTrackReader {
         todo!()
     }
 }
@@ -198,12 +192,12 @@ impl MIDIReader for RAMReader {
         Ok(to)
     }
 
-    fn open_reader<'a>(&self, start: u64, len: u64, _ram_cache: bool) -> Box<dyn TrackReader> {
-        Box::new(FullRamTrackReader {
+    fn open_reader<'a>(&self, start: u64, len: u64, _ram_cache: bool) -> FullRamTrackReader {
+        FullRamTrackReader {
             pos: start as usize,
             end: (start + len) as usize,
             bytes: self.bytes.clone(),
-        })
+        }
     }
 }
 

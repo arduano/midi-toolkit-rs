@@ -8,15 +8,9 @@ use std::fmt::Debug;
 
 use super::{
     errors::{MIDILoadError, MIDIParseError},
-    readers::{DiskReader, MIDIReader, RAMReader, TrackReader},
+    readers::{DiskReader, FullRamTrackReader, MIDIReader, RAMReader, TrackReader},
     track_parser::TrackParser,
 };
-
-pub enum RAMCache {
-    Cache,
-    NoCache,
-    CacheIfPossible,
-}
 
 pub trait ReadSeek: Debug + Read + Seek {}
 impl ReadSeek for File {}
@@ -28,8 +22,8 @@ struct TrackPos {
 }
 
 #[derive(Debug)]
-pub struct MIDIFile {
-    reader: Box<dyn MIDIReader>,
+pub struct MIDIFile<T: MIDIReader> {
+    reader: T,
     track_positions: Vec<TrackPos>,
 
     format: u16,
@@ -45,36 +39,28 @@ macro_rules! midi_error {
     };
 }
 
-impl MIDIFile {
+impl<T: MIDIReader> MIDIFile<T> {
     pub fn new_from_stream(
-        reader: Box<dyn ReadSeek>,
-        load_to_ram: bool,
+        reader: File,
         read_progress: Option<&dyn Fn(u32)>,
-    ) -> Result<Self, MIDILoadError> {
-        let reader = match load_to_ram {
-            true => Box::new(RAMReader::new(reader)?) as Box<dyn MIDIReader>,
-            false => Box::new(DiskReader::new(reader)?) as Box<dyn MIDIReader>,
-        };
+    ) -> Result<MIDIFile<RAMReader>, MIDILoadError> {
+        let reader = RAMReader::new(reader)?;
 
         MIDIFile::new_from_disk_reader(reader, read_progress)
     }
 
     pub fn new(
         filename: &str,
-        load_to_ram: RAMCache,
         read_progress: Option<&dyn Fn(u32)>,
-    ) -> Result<Self, MIDILoadError> {
+    ) -> Result<MIDIFile<RAMReader>, MIDILoadError> {
         let reader = midi_error!(File::open(filename))?;
-        let reader = match load_to_ram {
-            RAMCache::Cache | RAMCache::CacheIfPossible => Box::new(RAMReader::new(Box::new(reader))?) as Box<dyn MIDIReader>,
-            RAMCache::NoCache => Box::new(DiskReader::new(Box::new(reader))?) as Box<dyn MIDIReader>,
-        };
+        let reader = RAMReader::new(reader)?;
 
         MIDIFile::new_from_disk_reader(reader, read_progress)
     }
 
     fn new_from_disk_reader(
-        mut reader: Box<dyn MIDIReader>,
+        mut reader: T,
         read_progress: Option<&dyn Fn(u32)>,
     ) -> Result<Self, MIDILoadError> {
         reader.assert_header("MThd")?;
@@ -114,7 +100,7 @@ impl MIDIFile {
         })
     }
 
-    pub fn open_track_reader(&self, track: usize, ram_cache: bool) -> Box<dyn TrackReader> {
+    pub fn open_track_reader(&self, track: usize, ram_cache: bool) -> FullRamTrackReader {
         let pos = &self.track_positions[track];
         self.reader.open_reader(pos.pos, pos.len as u64, ram_cache)
     }
