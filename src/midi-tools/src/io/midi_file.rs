@@ -108,7 +108,7 @@ impl<T: MIDIReader> MIDIFile<T> {
     pub fn iter_all_tracks(
         &self,
         ram_cache: bool,
-    ) -> impl Iterator<Item = impl Iterator<Item = Result<Event<u32>, MIDIParseError>>> {
+    ) -> impl Iterator<Item = impl Iterator<Item = Result<Event<u64>, MIDIParseError>>> {
         let mut tracks = Vec::new();
         for i in 0..self.track_count() {
             tracks.push(self.iter_track(i, ram_cache));
@@ -120,7 +120,7 @@ impl<T: MIDIReader> MIDIFile<T> {
         &self,
         track: usize,
         ram_cache: bool,
-    ) -> impl Iterator<Item = Result<Event<u32>, MIDIParseError>> {
+    ) -> impl Iterator<Item = Result<Event<u64>, MIDIParseError>> {
         let reader = self.open_track_reader(track, ram_cache);
         let parser = TrackParser::new(reader);
         parser

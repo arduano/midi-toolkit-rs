@@ -33,11 +33,11 @@ impl TrackParser {
         self.reader.read()
     }
 
-    fn read_var_length(&mut self) -> Result<u32, MIDIParseError> {
-        let mut n: u32 = 0;
+    fn read_var_length(&mut self) -> Result<u64, MIDIParseError> {
+        let mut n: u64 = 0;
         loop {
             let byte = self.read()?;
-            n = (n << 7) | (byte & 0x7F) as u32;
+            n = (n << 7) | (byte & 0x7F) as u64;
             if (byte & 0x80) == 0 {
                 break;
             }
@@ -47,7 +47,7 @@ impl TrackParser {
 }
 
 impl Iterator for TrackParser {
-    type Item = Result<Event<u32>, MIDIParseError>;
+    type Item = Result<Event<u64>, MIDIParseError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         macro_rules! check {
