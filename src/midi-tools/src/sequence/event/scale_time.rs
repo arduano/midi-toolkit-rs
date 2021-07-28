@@ -4,7 +4,7 @@ use crate::{events::MIDIEvent, num::MIDINum, unwrap};
 
 /// Scale each delta time of an event sequence.
 ///
-/// Similar to scale_time, except only takes the multiplier.
+/// Similar to [`change_ppq`](crate::sequence::event::change_ppq), except only takes the multiplier.
 /// ## Example
 ///```
 ///use midi_tools::{events::Event, pipe, sequence::{event::scale_time, to_vec_result, wrap_ok}};

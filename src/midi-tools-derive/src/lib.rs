@@ -367,8 +367,10 @@ pub fn create_new_event(input: TokenStream) -> TokenStream {
 
         let doc_str = &format!("Creates a new `{}`.", name);
         let doc_str2 = &format!(
-            "Creates a new `{}` wrapped in `Event::{}`.",
+            "Creates a new [`{}`](crate::events::{}) wrapped in [`Event::{}`](crate::events::Event::{}).",
             name,
+            name,
+            event_ident.unraw().to_string(),
             event_ident.unraw().to_string()
         );
 

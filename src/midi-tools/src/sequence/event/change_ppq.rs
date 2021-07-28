@@ -4,7 +4,7 @@ use crate::{events::MIDIEvent, num::MIDINum, unwrap};
 
 /// Change the PPQ of an event sequence.
 ///
-/// Similar to `scale_time`, except does `new_delta = old_delta * to / from`.
+/// Similar to [`scale_time`](crate::sequence::event::scale_time), except does `new_delta = old_delta * to / from`.
 /// ## Example
 ///```
 ///use midi_tools::{
@@ -54,7 +54,11 @@ pub fn change_ppq<T: MIDINum, E: MIDIEvent<T>, Err, I: Iterator<Item = Result<E,
 
 #[cfg(test)]
 mod tests {
-    use crate::{events::Event, pipe, sequence::{event::change_ppq, to_vec_result, wrap_ok}};
+    use crate::{
+        events::Event,
+        pipe,
+        sequence::{event::change_ppq, to_vec_result, wrap_ok},
+    };
 
     #[test]
     fn delta_change() {

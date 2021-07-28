@@ -22,17 +22,15 @@ pub enum Event<D: MIDINum> {
     ChannelPressure(Box<ChannelPressureEvent<D>>),
     #[channel]
     PitchWheelChange(Box<PitchWheelChangeEvent<D>>),
-    #[channel]
-    ChannelModeMessage(Box<ChannelModeMessageEvent<D>>),
     SystemExclusiveMessage(Box<SystemExclusiveMessageEvent<D>>),
     Undefined(Box<UndefinedEvent<D>>),
     SongPositionPointer(Box<SongPositionPointerEvent<D>>),
     SongSelect(Box<SongSelectEvent<D>>),
     TuneRequest(Box<TuneRequestEvent<D>>),
     EndOfExclusive(Box<EndOfExclusiveEvent<D>>),
-    MajorMidiMessage(Box<MajorMidiMessageEvent<D>>),
     TrackStart(Box<TrackStartEvent<D>>),
     Text(Box<TextEvent<D>>),
+    UnknownMeta(Box<UnknownMetaEvent<D>>),
     Color(Box<ColorEvent<D>>),
     ChannelPrefix(Box<ChannelPrefixEvent<D>>),
     MIDIPort(Box<MIDIPortEvent<D>>),

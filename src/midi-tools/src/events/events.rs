@@ -10,6 +10,40 @@ pub struct MIDIColor {
     pub a: u8,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum TextEventKind {
+    TextEvent = 1,
+    CopyrightNotice = 2,
+    TrackName = 3,
+    InstrumentName = 4,
+    Lyric = 5,
+    Marker = 6,
+    CuePoint = 7,
+    ProgramName = 8,
+    DeviceName = 9,
+    Undefined = 10,
+    MetaEvent = 0x7F,
+}
+
+impl TextEventKind {
+    pub fn from_val(val: u8) -> TextEventKind {
+        match val {
+            1 => TextEventKind::TextEvent,
+            2 => TextEventKind::CopyrightNotice,
+            3 => TextEventKind::TrackName,
+            4 => TextEventKind::InstrumentName,
+            5 => TextEventKind::Lyric,
+            6 => TextEventKind::Marker,
+            7 => TextEventKind::CuePoint,
+            8 => TextEventKind::ProgramName,
+            9 => TextEventKind::DeviceName,
+            10 => TextEventKind::Undefined,
+            0x7F => TextEventKind::MetaEvent,
+            _ => panic!("Unrecognized text event kind received: {}", val),
+        }
+    }
+}
+
 #[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
 pub struct NoteOnEvent<D: MIDINum> {
     #[delta]
@@ -80,20 +114,10 @@ pub struct PitchWheelChangeEvent<D: MIDINum> {
 }
 
 #[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
-pub struct ChannelModeMessageEvent<D: MIDINum> {
-    #[delta]
-    pub delta: D,
-    #[channel]
-    pub channel: u8,
-    pub cc: u8,
-    pub vv: u8,
-}
-
-#[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
 pub struct SystemExclusiveMessageEvent<D: MIDINum> {
     #[delta]
     pub delta: D,
-    pub data: Box<[u8]>,
+    pub data: Vec<u8>,
 }
 
 #[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
@@ -130,13 +154,6 @@ pub struct EndOfExclusiveEvent<D: MIDINum> {
 }
 
 #[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
-pub struct MajorMidiMessageEvent<D: MIDINum> {
-    #[delta]
-    pub delta: D,
-    pub data: Box<[u8]>,
-}
-
-#[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
 pub struct TrackStartEvent<D: MIDINum> {
     #[delta]
     pub delta: D,
@@ -146,8 +163,16 @@ pub struct TrackStartEvent<D: MIDINum> {
 pub struct TextEvent<D: MIDINum> {
     #[delta]
     pub delta: D,
+    pub kind: TextEventKind,
+    pub bytes: Vec<u8>,
+}
+
+#[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
+pub struct UnknownMetaEvent<D: MIDINum> {
+    #[delta]
+    pub delta: D,
     pub kind: u8,
-    pub bytes: Box<[u8]>,
+    pub bytes: Vec<u8>,
 }
 
 #[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
