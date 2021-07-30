@@ -8,7 +8,7 @@ use std::fmt::Debug;
 
 use super::{
     errors::{MIDILoadError, MIDIParseError},
-    readers::{DiskReader, FullRamTrackReader, MIDIReader, RAMReader, TrackReader},
+    readers::{FullRamTrackReader, MIDIReader, RAMReader},
     track_parser::TrackParser,
 };
 

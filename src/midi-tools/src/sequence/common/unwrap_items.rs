@@ -1,4 +1,3 @@
-
 use std::fmt::Debug;
 
 /// Unwraps each item `Result<T, E>` into T, panicking if an error is reached
@@ -10,7 +9,11 @@ pub fn unwrap_items<T: Debug, E: Debug, I: Iterator<Item = Result<T, E>> + Sized
 
 #[cfg(test)]
 mod tests {
-    use crate::{events::Event, pipe, sequence::{to_vec, unwrap_items}};
+    use crate::{
+        events::Event,
+        pipe,
+        sequence::{to_vec, unwrap_items},
+    };
 
     #[test]
     #[should_panic]

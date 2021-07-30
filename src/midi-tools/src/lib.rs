@@ -35,15 +35,22 @@ macro_rules! pipe {
     };
 }
 
-#[macro_export]
+#[macro_export(local_inner_macros)]
 macro_rules! unwrap {
     ($val:expr) => {
         match $val {
             Ok(v) => v,
             Err(e) => {
-                yield Err(e);
-                panic!("Iterator requested the next item after an error occured");
+                yield_error!(Err(e));
             }
         }
     };
+}
+
+#[macro_export]
+macro_rules! yield_error {
+    ($err:expr) => {{
+        yield $err;
+        panic!("Iterator requested the next item after an error occured");
+    }};
 }

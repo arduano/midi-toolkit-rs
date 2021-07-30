@@ -147,7 +147,7 @@ impl<T: ReadSeek> MIDIReader for DiskReader<T> {
         midi_error!(self.reader.seek(SeekFrom::Start(to)))
     }
 
-    fn open_reader(&self, start: u64, len: u64, ram_cache: bool) -> FullRamTrackReader {
+    fn open_reader(&self, _start: u64, _len: u64, _ram_cache: bool) -> FullRamTrackReader {
         todo!()
     }
 }

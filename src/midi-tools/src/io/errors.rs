@@ -10,3 +10,8 @@ pub enum MIDIParseError {
     CorruptEvent,
     UnexpectedTrackEnd,
 }
+
+#[derive(Debug)]
+pub enum MIDIWriteError {
+    FilesystemError(std::io::Error),
+}

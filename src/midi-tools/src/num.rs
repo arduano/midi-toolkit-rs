@@ -1,4 +1,7 @@
-use num_traits::Num;
+use std::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
+
+use num_traits::{Num};
+use std::fmt::Debug;
 
 pub trait MIDINumInto<T: MIDINum> {
     /// Casts the midi time type to another supported type.
@@ -24,7 +27,10 @@ pub trait MIDINumInto<T: MIDINum> {
     fn midi_num_into(&self) -> T;
 }
 
-pub trait MIDINum: Num + Copy + Sized {}
+pub trait MIDINum:
+    Num + PartialOrd + AddAssign + SubAssign + DivAssign + MulAssign + Copy + Sized + Debug
+{
+}
 
 macro_rules! impl_delta_from_to {
     ($from:ident, $to:ident) => {
@@ -63,7 +69,7 @@ impl MIDINum for f64 {}
 
 #[cfg(test)]
 mod tests {
-    use crate::num::{MIDINumInto};
+    use crate::num::MIDINumInto;
     #[test]
     fn casts_delta() {
         let dt_i32: i32 = 10;

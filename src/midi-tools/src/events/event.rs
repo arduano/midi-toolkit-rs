@@ -1,7 +1,9 @@
 use super::events::*;
-use super::{CastEventDelta, ChannelEvent, KeyEvent, MIDIEvent};
+use super::{CastEventDelta, ChannelEvent, KeyEvent, MIDIEvent, SerializeEvent};
+use crate::io::errors::MIDIWriteError;
 use crate::num::{MIDINum, MIDINumInto};
 use derive::EventImpl;
+use std::io::Write;
 
 #[derive(EventImpl, Debug, PartialEq)]
 pub enum Event<D: MIDINum> {
@@ -32,7 +34,9 @@ pub enum Event<D: MIDINum> {
     Text(Box<TextEvent<D>>),
     UnknownMeta(Box<UnknownMetaEvent<D>>),
     Color(Box<ColorEvent<D>>),
+    #[channel]
     ChannelPrefix(Box<ChannelPrefixEvent<D>>),
+    #[channel]
     MIDIPort(Box<MIDIPortEvent<D>>),
     Tempo(Box<TempoEvent<D>>),
     SMPTEOffset(Box<SMPTEOffsetEvent<D>>),

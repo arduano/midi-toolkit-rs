@@ -541,6 +541,7 @@ pub fn event_impl(input: TokenStream) -> TokenStream {
         let as_channel_event_mut = make_map!(quote! { event.as_channel_event_mut() });
 
         let cast_delta = make_map!(quote! { event.cast_delta().as_event() });
+        let serialize_event = make_map!(quote! { event.serialize_event(buf) });
 
         let mut event_wrap_impl = Vec::new();
         for variant in variants.iter() {
@@ -643,6 +644,12 @@ pub fn event_impl(input: TokenStream) -> TokenStream {
                 #[inline(always)]
                 fn cast_delta(&self) -> #name<DT> {
                     #cast_delta
+                }
+            }
+
+            impl<D: MIDINum> SerializeEvent for Event<D> {
+                fn serialize_event<T: Write>(&self, buf: &mut T) -> Result<(), MIDIWriteError> {
+                    #serialize_event
                 }
             }
         };

@@ -1,14 +1,8 @@
 use std::time::Instant;
 
-use midi_tools::{
-    events::{Event, MIDIEvent},
-    io::{midi_file::MIDIFile, readers::RAMReader},
-    num::MIDINum,
-    pipe,
-    sequence::{
+use midi_tools::{events::{Event, MIDIEvent}, io::{midi_file::MIDIFile, midi_writer::MIDIWriter, readers::RAMReader}, num::MIDINum, pipe, sequence::{
         unwrap_items,
-    },
-};
+    }};
 
 pub fn boxed<
     T: MIDINum,
@@ -28,18 +22,19 @@ pub fn main() {
         None,
     )
     .unwrap();
+    let writer = MIDIWriter::new("./out.mid", file.ppq()).unwrap();
     println!("Parsing midi...");
     let now = Instant::now();
     let mut nc: u64 = 0;
     for track in file.iter_all_tracks(true) {
-        // let track = TimeCaster::<f64>::cast_event_delta(track);
+        let mut track_writer = writer.open_next_track();
         for e in pipe!(track|>unwrap_items())
-        // for e in pipe!(track|>TimeCaster::<f64>::cast_event_delta()|>scale_event_time(10.0)|>unwrap_items())
         {
             match e {
                 Event::NoteOn(_) => nc += 1,
                 _ => {}
             }
+            track_writer.write_event(e).unwrap();
         }
     }
     // let merged = pipe!(file.iter_all_tracks(true)|>to_vec()|>merge_events_array()|>unwrap_items());
