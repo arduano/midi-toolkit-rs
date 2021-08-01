@@ -11,6 +11,7 @@ use super::errors::MIDIWriteError;
 
 pub trait WriteSeek: Write + Seek {}
 impl WriteSeek for File {}
+impl WriteSeek for Cursor<Vec<u8>> {}
 
 pub struct QueuedOutput {
     write: Box<dyn Read>,
@@ -252,10 +253,7 @@ impl<'a> TrackWriter<'a> {
         event.serialize_event_with_delta(writer)
     }
 
-    pub fn write_bytes(
-        &mut self,
-        bytes: &[u8],
-    ) -> Result<(), MIDIWriteError> {
+    pub fn write_bytes(&mut self, bytes: &[u8]) -> Result<(), MIDIWriteError> {
         let writer = self.get_writer_mut();
         midi_error_discard!(writer.write(bytes))
     }

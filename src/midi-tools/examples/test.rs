@@ -1,14 +1,6 @@
 use std::time::Instant;
 
-use midi_tools::{
-    events::{Event, MIDIEvent},
-    io::{midi_file::MIDIFile, readers::RAMReader},
-    num::MIDINum,
-    pipe,
-    sequence::{
-        unwrap_items,
-    },
-};
+use midi_tools::{events::{Event, MIDIEvent}, io::{midi_file::MIDIFile, readers::RAMReader}, num::MIDINum, pipe, sequence::{event::merge_events_array, to_vec, unwrap_items}};
 
 pub fn boxed<
     T: MIDINum,
@@ -31,25 +23,25 @@ pub fn main() {
     println!("Parsing midi...");
     let now = Instant::now();
     let mut nc: u64 = 0;
-    for track in file.iter_all_tracks(true) {
-        // let track = TimeCaster::<f64>::cast_event_delta(track);
-        for e in pipe!(track|>unwrap_items())
-        // for e in pipe!(track|>TimeCaster::<f64>::cast_event_delta()|>scale_event_time(10.0)|>unwrap_items())
-        {
-            match e {
-                Event::NoteOn(_) => nc += 1,
-                _ => {}
-            }
-        }
-    }
-    // let merged = pipe!(file.iter_all_tracks(true)|>to_vec()|>merge_events_array()|>unwrap_items());
-
-    // for e in merged {
-    //     match e {
-    //         Event::NoteOn(_) => nc += 1,
-    //         _ => {}
+    // for track in file.iter_all_tracks(true) {
+    //     // let track = TimeCaster::<f64>::cast_event_delta(track);
+    //     for e in pipe!(track|>unwrap_items())
+    //     // for e in pipe!(track|>TimeCaster::<f64>::cast_event_delta()|>scale_event_time(10.0)|>unwrap_items())
+    //     {
+    //         match e {
+    //             Event::NoteOn(_) => nc += 1,
+    //             _ => {}
+    //         }
     //     }
     // }
+    let merged = pipe!(file.iter_all_tracks(true)|>to_vec()|>merge_events_array()|>unwrap_items());
+
+    for e in merged {
+        match e {
+            Event::NoteOn(_) => nc += 1,
+            _ => {}
+        }
+    }
     println!("Finished parsing midi, found {} notes", nc);
     println!("Elapsed {:?}", now.elapsed());
     println!(
