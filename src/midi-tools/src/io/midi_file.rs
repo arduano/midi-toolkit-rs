@@ -12,7 +12,7 @@ use super::{
     track_parser::TrackParser,
 };
 
-pub trait ReadSeek: Debug + Read + Seek {}
+pub trait ReadSeek: Debug + Read + Seek + Send {}
 impl ReadSeek for File {}
 
 #[derive(Debug)]
@@ -60,30 +60,65 @@ impl<T: MIDIReader> MIDIFile<T> {
     }
 
     fn new_from_disk_reader(
-        mut reader: T,
+        reader: T,
         read_progress: Option<&dyn Fn(u32)>,
     ) -> Result<Self, MIDILoadError> {
-        reader.assert_header("MThd")?;
+        fn bytes_to_val(bytes: &[u8]) -> u32 {
+            assert!(bytes.len() <= 4);
+            let mut num: u32 = 0;
+            for b in bytes {
+                num = (num << 8) + *b as u32;
+            }
 
-        let header_len = reader.read_value(4)?;
+            num
+        }
 
+        fn read_header<T: MIDIReader>(
+            reader: &T,
+            pos: u64,
+            text: &str,
+        ) -> Result<u32, MIDILoadError> {
+            assert!(text.len() == 4);
+
+            let bytes = reader.read_bytes(pos, 8)?;
+
+            let (header, len) = bytes.split_at(4);
+
+            let chars = text.as_bytes();
+
+            for i in 0..chars.len() {
+                if chars[i] != header[i] {
+                    return Err(MIDILoadError::CorruptChunks);
+                }
+            }
+
+            Ok(bytes_to_val(len))
+        }
+
+        let mut pos = 0u64;
+
+        let header_len = read_header(&reader, pos, "MThd")?;
+        pos += 8;
         if header_len != 6 {
             return Err(MIDILoadError::CorruptChunks);
         }
 
-        let format = reader.read_value(2)? as u16;
-        let _track_count_bad = reader.read_value(2)?;
-        let ppq = reader.read_value(2)? as u16;
+        let (format, ppq) = {
+            let header_data = reader.read_bytes(pos, 6)?;
+            pos += 6;
+            let (format_bytes, rest) = header_data.split_at(2);
+            let (_, ppq_bytes) = rest.split_at(2);
+            (bytes_to_val(format_bytes) as u16, bytes_to_val(ppq_bytes) as u16)
+        };
 
         let mut track_count = 0 as u32;
         let mut track_positions = Vec::<TrackPos>::new();
-        while !reader.is_end()? {
-            reader.assert_header("MTrk")?;
+        while pos != reader.len() {
+            let len = read_header(&reader, pos, "MTrk")?;
+            pos += 8;
             track_count += 1;
-            let len = reader.read_value(4)?;
-            let pos = reader.get_position()?;
             track_positions.push(TrackPos { len, pos });
-            reader.skip(len as u64)?;
+            pos += len as u64;
 
             match read_progress {
                 Some(progress) => progress(track_count),

@@ -13,3 +13,4 @@ name="midi_tools"
 gen-iter = "0.2.0"
 num-traits = "0.2.14"
 derive = { path = "../midi-tools-derive", package = "midi-tools-rs-derive" }
+crossbeam-channel = "0.5.1"

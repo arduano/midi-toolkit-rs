@@ -1,4 +1,9 @@
-use std::{io::SeekFrom, sync::Arc};
+use crossbeam_channel::{bounded, unbounded, Sender};
+use std::{
+    io::{self, SeekFrom},
+    sync::Arc,
+    thread::{self, JoinHandle},
+};
 
 use super::{
     errors::{MIDILoadError, MIDIParseError},
@@ -7,8 +12,8 @@ use super::{
 
 use std::fmt::Debug;
 #[derive(Debug)]
-pub struct DiskReader<T: ReadSeek> {
-    reader: T,
+pub struct DiskReader {
+    reader: BufferReadProvider,
     length: u64,
 }
 
@@ -16,6 +21,80 @@ pub struct DiskReader<T: ReadSeek> {
 pub struct RAMReader {
     bytes: Arc<Vec<u8>>,
     pos: usize,
+}
+
+pub struct ReadCommand {
+    destination: Arc<Sender<Result<Vec<u8>, io::Error>>>,
+    buffer: Vec<u8>,
+    start: u64,
+    length: usize,
+}
+
+#[derive(Debug)]
+pub struct BufferReadProvider {
+    thread: JoinHandle<()>,
+    send: Sender<ReadCommand>,
+}
+
+impl BufferReadProvider {
+    pub fn new<T: 'static + ReadSeek>(mut reader: T) -> BufferReadProvider {
+        let (snd, rcv) = unbounded::<ReadCommand>();
+
+        let handle = thread::spawn(move || {
+            let mut read =
+                move |mut buffer: Vec<u8>, start: u64, length: usize| -> Result<Vec<u8>, io::Error> {
+                    reader.seek(SeekFrom::Start(start))?;
+                    let (sub, _) = buffer.split_at_mut(length);
+                    reader.read_exact(sub)?;
+                    Ok(buffer)
+                };
+
+            loop {
+                match rcv.recv() {
+                    Err(_) => return,
+                    Ok(cmd) => match read(cmd.buffer, cmd.start, cmd.length) {
+                        Ok(buf) => {
+                            cmd.destination.send(Ok(buf)).ok();
+                        }
+                        Err(e) => {
+                            cmd.destination.send(Err(e)).ok();
+                        }
+                    },
+                }
+            }
+        });
+
+        BufferReadProvider {
+            send: snd,
+            thread: handle,
+        }
+    }
+
+    pub fn send_read_command(
+        &self,
+        destination: Arc<Sender<Result<Vec<u8>, io::Error>>>,
+        buffer: Vec<u8>,
+        start: u64,
+        length: usize,
+    ) {
+        let cmd = ReadCommand {
+            destination,
+            buffer,
+            start,
+            length,
+        };
+
+        self.send.send(cmd).unwrap();
+    }
+
+    pub fn read_sync(&self, buf: Vec<u8>, start: u64) -> Result<Vec<u8>, io::Error> {
+        let (send, receive) = bounded::<Result<Vec<u8>, io::Error>>(1);
+
+        let len = buf.len();
+        self.send_read_command(Arc::new(send), buf, start, len);
+
+        receive.recv().unwrap()
+    }
 }
 
 macro_rules! midi_error {
@@ -37,9 +116,10 @@ fn get_reader_len<T: ReadSeek>(reader: &mut T) -> Result<u64, MIDILoadError> {
     midi_error!(get())
 }
 
-impl<T: ReadSeek> DiskReader<T> {
-    pub fn new(mut reader: T) -> Result<DiskReader<T>, MIDILoadError> {
+impl DiskReader {
+    pub fn new<T: 'static + ReadSeek>(mut reader: T) -> Result<DiskReader, MIDILoadError> {
         let len = get_reader_len(&mut reader);
+        let reader = BufferReadProvider::new(reader);
 
         match len {
             Err(e) => Err(e),
@@ -84,120 +164,68 @@ impl RAMReader {
 }
 
 pub trait MIDIReader: Debug {
-    fn assert_header(&mut self, text: &str) -> Result<(), MIDILoadError>;
-    fn read_value(&mut self, bytes: i32) -> Result<u32, MIDILoadError>;
-    fn get_position(&mut self) -> Result<u64, MIDILoadError>;
-    fn is_end(&mut self) -> Result<bool, MIDILoadError>;
-    fn skip(&mut self, bytes: u64) -> Result<u64, MIDILoadError>;
+    fn read_bytes_to(
+        &self,
+        pos: u64,
+        bytes: Vec<u8>,
+    ) -> Result<Vec<u8>, MIDILoadError>;
+    fn read_bytes(&self, pos: u64, count: usize) -> Result<Vec<u8>, MIDILoadError> {
+        let bytes = vec![0u8; count];
+
+        self.read_bytes_to(pos, bytes)
+    }
+
+    fn len(&self) -> u64;
 
     fn open_reader(&self, start: u64, len: u64, ram_cache: bool) -> FullRamTrackReader;
 }
 
-impl<T: ReadSeek> MIDIReader for DiskReader<T> {
-    fn assert_header(&mut self, text: &str) -> Result<(), MIDILoadError> {
-        let reader = &mut self.reader;
-        let chars = text.as_bytes();
-        let mut bytes = vec![0 as u8; chars.len()];
-        let read = reader.read_exact(&mut bytes);
-
-        if read.is_err() {
-            return Err(MIDILoadError::CorruptChunks);
-        }
-
-        for i in 0..chars.len() {
-            if chars[i] != bytes[i] {
-                return Err(MIDILoadError::CorruptChunks);
-            }
-        }
-        return Ok(());
-    }
-
-    fn read_value(&mut self, bytes: i32) -> Result<u32, MIDILoadError> {
-        let reader = &mut self.reader;
-
-        let mut b = vec![0 as u8; bytes as usize];
-        let read = midi_error!(reader.read_exact(&mut b));
-
-        match read {
-            Err(e) => Err(e),
-            Ok(_) => {
-                let mut num: u32 = 0;
-                for v in b {
-                    num = (num << 8) + v as u32;
-                }
-                Ok(num)
-            }
-        }
-    }
-
-    fn get_position(&mut self) -> Result<u64, MIDILoadError> {
-        midi_error!(self.reader.stream_position())
-    }
-
-    fn is_end(&mut self) -> Result<bool, MIDILoadError> {
-        Ok(self.get_position()? == self.length)
-    }
-
-    fn skip(&mut self, bytes: u64) -> Result<u64, MIDILoadError> {
-        let pos = self.get_position()?;
-        let mut to = pos as u64 + bytes;
-        if to > self.length as u64 {
-            to = self.length as u64;
-        }
-        midi_error!(self.reader.seek(SeekFrom::Start(to)))
-    }
-
+impl MIDIReader for DiskReader {
     fn open_reader(&self, _start: u64, _len: u64, _ram_cache: bool) -> FullRamTrackReader {
         todo!()
+    }
+
+    fn read_bytes_to(
+        &self,
+        pos: u64,
+        bytes: Vec<u8>,
+    ) -> Result<Vec<u8>, MIDILoadError> {
+        midi_error!(self.reader.read_sync(bytes, pos))
+    }
+
+    fn len(&self) -> u64 {
+        self.length
     }
 }
 
 impl MIDIReader for RAMReader {
-    fn assert_header(&mut self, text: &str) -> Result<(), MIDILoadError> {
-        let chars = text.as_bytes();
-
-        for i in 0..chars.len() {
-            let read = self.read_byte()?;
-            if chars[i] != read {
-                return Err(MIDILoadError::CorruptChunks);
-            }
-        }
-        return Ok(());
-    }
-
-    fn read_value(&mut self, bytes: i32) -> Result<u32, MIDILoadError> {
-        let mut num: u32 = 0;
-        for _ in 0..bytes {
-            num = (num << 8) + self.read_byte()? as u32;
-        }
-        Ok(num)
-    }
-
-    fn get_position(&mut self) -> Result<u64, MIDILoadError> {
-        Ok(self.pos as u64)
-    }
-
-    fn is_end(&mut self) -> Result<bool, MIDILoadError> {
-        Ok(self.pos == self.bytes.len())
-    }
-
-    fn skip(&mut self, bytes: u64) -> Result<u64, MIDILoadError> {
-        let pos = self.get_position()?;
-        let mut to = pos as u64 + bytes;
-        let len = self.bytes.len();
-        if to > len as u64 {
-            to = len as u64;
-        }
-        self.pos = to as usize;
-        Ok(to)
-    }
-
     fn open_reader<'a>(&self, start: u64, len: u64, _ram_cache: bool) -> FullRamTrackReader {
         FullRamTrackReader {
             pos: start as usize,
             end: (start + len) as usize,
             bytes: self.bytes.clone(),
         }
+    }
+
+    fn read_bytes_to(
+        &self,
+        pos: u64,
+        mut bytes: Vec<u8>,
+    ) -> Result<Vec<u8>, MIDILoadError> {
+        let count = bytes.len();
+        if pos + count as u64 > self.len() {
+            return Err(MIDILoadError::CorruptChunks);
+        }
+
+        for i in 0..count {
+            bytes[i] = self.bytes[pos as usize + i];
+        }
+
+        Ok(bytes)
+    }
+
+    fn len(&self) -> u64 {
+        self.bytes.len() as u64
     }
 }
 
