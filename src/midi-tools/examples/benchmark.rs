@@ -5,7 +5,7 @@ use std::{
 
 use midi_tools::{
     events::Event,
-    io::{midi_file::MIDIFile, midi_writer::MIDIWriter, readers::RAMReader},
+    io::{midi_file::MIDIFile, midi_writer::MIDIWriter},
     pipe,
     sequence::{event::merge_events_array, to_vec, to_vec_result, unwrap_items, wrap_ok},
 };
@@ -31,16 +31,15 @@ fn do_run<T: Fn()>(name: &str, repeats: i32, run: T) {
 }
 
 fn main() {
-    let filename = "D:/Midis/Ra Ra Rasputin Ultimate Black MIDI Final.mid";
+    let filename = "D:/Midis/tau2.5.9.mid";
     let repeats = 1;
 
     println!("Opening midi...");
-    let file = MIDIFile::<RAMReader>::new(filename, None).unwrap();
+    let file = MIDIFile::open(filename, None).unwrap();
 
-    let loaded_tracks = to_vec(
-        file.iter_all_tracks(true)
-            .map(|t| to_vec_result(t).unwrap()),
-    );
+    println!("Tracks: {}", file.track_count());
+
+    let loaded_tracks = to_vec(file.iter_all_tracks().map(|t| to_vec_result(t).unwrap()));
 
     let mut nc: u64 = 0;
     for track in loaded_tracks.iter() {
@@ -54,12 +53,12 @@ fn main() {
     println!("Note count: {}", nc);
 
     do_run("Parse all tracks individually", repeats, || {
-        for track in file.iter_all_tracks(true) {
+        for track in file.iter_all_tracks() {
             for _ in pipe!(track) {}
         }
     });
     do_run("Merge all tracks together while parsing", repeats, || {
-        let merged = pipe!(file.iter_all_tracks(true)|>to_vec()|>merge_events_array());
+        let merged = pipe!(file.iter_all_tracks()|>to_vec()|>merge_events_array());
         for _ in merged {}
     });
     do_run("Clone all events", repeats, || {

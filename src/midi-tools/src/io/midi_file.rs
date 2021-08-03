@@ -1,14 +1,13 @@
-use std::{
-    fs::File,
-    io::{Read, Seek},
-};
+use std::{fs::File, io::{Read, Seek}, marker::PhantomData};
 
 use crate::events::Event;
 use std::fmt::Debug;
 
 use super::{
     errors::{MIDILoadError, MIDIParseError},
-    readers::{FullRamTrackReader, MIDIReader, RAMReader},
+    readers::{
+        DiskReader, DiskTrackReader, FullRamTrackReader, MIDIReader, RAMReader, TrackReader,
+    },
     track_parser::TrackParser,
 };
 
@@ -22,12 +21,14 @@ struct TrackPos {
 }
 
 #[derive(Debug)]
-pub struct MIDIFile<T: MIDIReader> {
+pub struct MIDIFileParser<T: MIDIReader<R>, R: TrackReader> {
     reader: T,
     track_positions: Vec<TrackPos>,
 
     format: u16,
     ppq: u16,
+
+    _t: PhantomData<R>
 }
 
 macro_rules! midi_error {
@@ -39,26 +40,7 @@ macro_rules! midi_error {
     };
 }
 
-impl<T: MIDIReader> MIDIFile<T> {
-    pub fn new_from_stream(
-        reader: File,
-        read_progress: Option<&dyn Fn(u32)>,
-    ) -> Result<MIDIFile<RAMReader>, MIDILoadError> {
-        let reader = RAMReader::new(reader)?;
-
-        MIDIFile::new_from_disk_reader(reader, read_progress)
-    }
-
-    pub fn new(
-        filename: &str,
-        read_progress: Option<&dyn Fn(u32)>,
-    ) -> Result<MIDIFile<RAMReader>, MIDILoadError> {
-        let reader = midi_error!(File::open(filename))?;
-        let reader = RAMReader::new(reader)?;
-
-        MIDIFile::new_from_disk_reader(reader, read_progress)
-    }
-
+impl<T: MIDIReader<R>, R: TrackReader> MIDIFileParser<T, R> {
     fn new_from_disk_reader(
         reader: T,
         read_progress: Option<&dyn Fn(u32)>,
@@ -73,7 +55,7 @@ impl<T: MIDIReader> MIDIFile<T> {
             num
         }
 
-        fn read_header<T: MIDIReader>(
+        fn read_header<T: MIDIReader<R>, R: TrackReader>(
             reader: &T,
             pos: u64,
             text: &str,
@@ -108,7 +90,10 @@ impl<T: MIDIReader> MIDIFile<T> {
             pos += 6;
             let (format_bytes, rest) = header_data.split_at(2);
             let (_, ppq_bytes) = rest.split_at(2);
-            (bytes_to_val(format_bytes) as u16, bytes_to_val(ppq_bytes) as u16)
+            (
+                bytes_to_val(format_bytes) as u16,
+                bytes_to_val(ppq_bytes) as u16,
+            )
         };
 
         let mut track_count = 0 as u32;
@@ -127,26 +112,26 @@ impl<T: MIDIReader> MIDIFile<T> {
         }
 
         track_positions.shrink_to_fit();
-        Ok(MIDIFile {
+        Ok(MIDIFileParser {
             reader,
             ppq,
             format,
             track_positions,
+            _t: PhantomData,
         })
     }
 
-    pub fn open_track_reader(&self, track: usize, ram_cache: bool) -> FullRamTrackReader {
+    pub fn open_track_reader(&self, track: usize) -> R {
         let pos = &self.track_positions[track];
-        self.reader.open_reader(pos.pos, pos.len as u64, ram_cache)
+        self.reader.open_reader(pos.pos, pos.len as u64)
     }
 
     pub fn iter_all_tracks(
         &self,
-        ram_cache: bool,
     ) -> impl Iterator<Item = impl Iterator<Item = Result<Event<u64>, MIDIParseError>>> {
         let mut tracks = Vec::new();
         for i in 0..self.track_count() {
-            tracks.push(self.iter_track(i, ram_cache));
+            tracks.push(self.iter_track(i));
         }
         tracks.into_iter()
     }
@@ -154,9 +139,8 @@ impl<T: MIDIReader> MIDIFile<T> {
     pub fn iter_track(
         &self,
         track: usize,
-        ram_cache: bool,
     ) -> impl Iterator<Item = Result<Event<u64>, MIDIParseError>> {
-        let reader = self.open_track_reader(track, ram_cache);
+        let reader = self.open_track_reader(track);
         let parser = TrackParser::new(reader);
         parser
     }
@@ -171,5 +155,49 @@ impl<T: MIDIReader> MIDIFile<T> {
 
     pub fn track_count(&self) -> usize {
         self.track_positions.len()
+    }
+}
+
+pub struct MIDIFile;
+
+impl MIDIFile {
+    pub fn open(
+        filename: &str,
+        read_progress: Option<&dyn Fn(u32)>,
+    ) -> Result<MIDIFileParser<DiskReader, DiskTrackReader>, MIDILoadError> {
+        let reader = midi_error!(File::open(filename))?;
+        let reader = DiskReader::new(reader)?;
+
+        MIDIFileParser::new_from_disk_reader(reader, read_progress)
+    }
+
+    pub fn open_in_ram(
+        filename: &str,
+        read_progress: Option<&dyn Fn(u32)>,
+    ) -> Result<MIDIFileParser<RAMReader, FullRamTrackReader>, MIDILoadError> {
+        let reader = midi_error!(File::open(filename))?;
+        let reader = RAMReader::new(reader)?;
+
+        MIDIFileParser::new_from_disk_reader(reader, read_progress)
+    }
+
+    pub fn open_from_stream(
+        filename: &str,
+        read_progress: Option<&dyn Fn(u32)>,
+    ) -> Result<MIDIFileParser<DiskReader, DiskTrackReader>, MIDILoadError> {
+        let reader = midi_error!(File::open(filename))?;
+        let reader = DiskReader::new(reader)?;
+
+        MIDIFileParser::new_from_disk_reader(reader, read_progress)
+    }
+
+    pub fn open_from_stream_in_ram(
+        filename: &str,
+        read_progress: Option<&dyn Fn(u32)>,
+    ) -> Result<MIDIFileParser<RAMReader, FullRamTrackReader>, MIDILoadError> {
+        let reader = midi_error!(File::open(filename))?;
+        let reader = RAMReader::new(reader)?;
+
+        MIDIFileParser::new_from_disk_reader(reader, read_progress)
     }
 }

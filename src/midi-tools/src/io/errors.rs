@@ -9,6 +9,7 @@ pub enum MIDILoadError {
 pub enum MIDIParseError {
     CorruptEvent,
     UnexpectedTrackEnd,
+    FilesystemError(std::io::Error),
 }
 
 #[derive(Debug)]

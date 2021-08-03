@@ -1,6 +1,12 @@
 use std::time::Instant;
 
-use midi_tools::{events::{Event, MIDIEvent}, io::{midi_file::MIDIFile, readers::RAMReader}, num::MIDINum, pipe, sequence::{event::merge_events_array, to_vec, unwrap_items}};
+use midi_tools::{
+    events::{Event, MIDIEvent},
+    io::midi_file::MIDIFile,
+    num::MIDINum,
+    pipe,
+    sequence::{event::merge_events_array, to_vec, unwrap_items},
+};
 
 pub fn boxed<
     T: MIDINum,
@@ -15,11 +21,7 @@ pub fn boxed<
 
 pub fn main() {
     println!("Opening midi...");
-    let file = MIDIFile::<RAMReader>::new(
-        "D:/Midis/tau2.5.9.mid",
-        None,
-    )
-    .unwrap();
+    let file = MIDIFile::open("D:/Midis/LBSFS Obliteration Mode V3.mid", None).unwrap();
     println!("Parsing midi...");
     let now = Instant::now();
     let mut nc: u64 = 0;
@@ -34,7 +36,7 @@ pub fn main() {
     //         }
     //     }
     // }
-    let merged = pipe!(file.iter_all_tracks(true)|>to_vec()|>merge_events_array()|>unwrap_items());
+    let merged = pipe!(file.iter_all_tracks()|>to_vec()|>merge_events_array()|>unwrap_items());
 
     for e in merged {
         match e {
