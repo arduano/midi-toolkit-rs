@@ -181,22 +181,20 @@ impl MIDIFile {
         MIDIFileParser::new_from_disk_reader(reader, read_progress)
     }
 
-    pub fn open_from_stream(
-        filename: &str,
+    pub fn open_from_stream<T: 'static + ReadSeek>(
+        stream: T,
         read_progress: Option<&dyn Fn(u32)>,
     ) -> Result<MIDIFileParser<DiskReader, DiskTrackReader>, MIDILoadError> {
-        let reader = midi_error!(File::open(filename))?;
-        let reader = DiskReader::new(reader)?;
+        let reader = DiskReader::new(stream)?;
 
         MIDIFileParser::new_from_disk_reader(reader, read_progress)
     }
 
-    pub fn open_from_stream_in_ram(
-        filename: &str,
+    pub fn open_from_stream_in_ram<T: 'static + ReadSeek>(
+        stream: T,
         read_progress: Option<&dyn Fn(u32)>,
     ) -> Result<MIDIFileParser<RAMReader, FullRamTrackReader>, MIDILoadError> {
-        let reader = midi_error!(File::open(filename))?;
-        let reader = RAMReader::new(reader)?;
+        let reader = RAMReader::new(stream)?;
 
         MIDIFileParser::new_from_disk_reader(reader, read_progress)
     }
