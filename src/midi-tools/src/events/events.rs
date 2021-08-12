@@ -1,5 +1,5 @@
 use crate::events::encode_var_length_value;
-use crate::io::errors::MIDIWriteError;
+use crate::io::MIDIWriteError;
 
 use super::event::Event;
 use super::{

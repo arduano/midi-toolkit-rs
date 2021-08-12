@@ -1,6 +1,6 @@
 use super::events::*;
 use super::{CastEventDelta, ChannelEvent, KeyEvent, MIDIEvent, SerializeEvent};
-use crate::io::errors::MIDIWriteError;
+use crate::io::MIDIWriteError;
 use crate::num::{MIDINum, MIDINumInto};
 use derive::EventImpl;
 use std::io::Write;

@@ -5,7 +5,7 @@ use std::{
 
 use midi_tools::{
     events::Event,
-    io::{midi_file::MIDIFile, midi_writer::MIDIWriter},
+    io::{MIDIFile, MIDIWriter},
     pipe,
     sequence::{event::merge_events_array, to_vec, to_vec_result, unwrap_items, wrap_ok},
 };

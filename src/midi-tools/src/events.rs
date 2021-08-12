@@ -3,7 +3,7 @@ mod events;
 use std::io::Write;
 
 use crate::{
-    io::errors::MIDIWriteError,
+    io::MIDIWriteError,
     num::{MIDINum, MIDINumInto},
 };
 pub use event::Event;

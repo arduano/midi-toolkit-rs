@@ -1,5 +1,10 @@
-pub mod readers;
-pub mod errors;
-pub mod midi_file;
-pub mod midi_writer;
-pub mod track_parser;
+mod readers;
+pub use readers::*;
+mod errors;
+pub use errors::*;
+mod midi_file;
+pub use midi_file::*;
+mod midi_writer;
+pub use midi_writer::*;
+mod track_parser;
+pub use track_parser::*;

@@ -2,7 +2,7 @@ use std::time::Instant;
 
 use midi_tools::{
     events::{Event, MIDIEvent},
-    io::midi_file::MIDIFile,
+    io::MIDIFile,
     num::MIDINum,
     pipe,
     sequence::{event::merge_events_array, to_vec, unwrap_items},
