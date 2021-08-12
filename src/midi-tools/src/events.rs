@@ -65,11 +65,26 @@ pub trait MIDIEvent<T: MIDINum>: SerializeEvent {
     }
 }
 
+pub trait MIDIEventEnum<T: MIDINum>: MIDIEvent<T> {
+    fn as_event(&self) -> &Event<T>;
+    fn as_event_mut(&mut self) -> &Event<T>;
+}
+
 impl<E: MIDIEvent<u64>> SerializeEventWithDelta for E {
     fn serialize_delta<T: Write>(&self, buf: &mut T) -> Result<(), MIDIWriteError> {
         let delta = self.delta();
         let vec = encode_var_length_value(delta);
         midi_error!(buf.write(&vec))
+    }
+}
+
+impl<T: MIDINum> MIDIEventEnum<T> for Event<T> {
+    fn as_event(&self) -> &Event<T> {
+        self
+    }
+
+    fn as_event_mut(&mut self) -> &Event<T> {
+        self
     }
 }
 
