@@ -21,7 +21,7 @@ pub fn boxed<
 
 pub fn main() {
     println!("Opening midi...");
-    let file = MIDIFile::open("D:/Midis/LBSFS Obliteration Mode V3.mid", None).unwrap();
+    let file = MIDIFile::open("D:/Midis/tau2.5.9.mid", None).unwrap();
     println!("Parsing midi...");
     let now = Instant::now();
     let mut nc: u64 = 0;
@@ -43,7 +43,13 @@ pub fn main() {
             Event::NoteOn(_) => nc += 1,
             _ => {}
         }
+        let delta = e.delta();
+        if delta > 184467440737 {
+            dbg!(e);
+        }
     }
+
+
     println!("Finished parsing midi, found {} notes", nc);
     println!("Elapsed {:?}", now.elapsed());
     println!(

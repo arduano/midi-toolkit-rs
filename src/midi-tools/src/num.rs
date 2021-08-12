@@ -1,6 +1,6 @@
 use std::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
 
-use num_traits::{Num};
+use num_traits::Num;
 use std::fmt::Debug;
 
 pub trait MIDINumInto<T: MIDINum> {
@@ -52,7 +52,21 @@ pub trait MIDINumFrom<T: MIDINum> {
 }
 
 pub trait MIDINum:
-    Num + PartialOrd + AddAssign + SubAssign + DivAssign + MulAssign + Copy + Sized + Debug + MIDINumFrom<i32> + MIDINumFrom<f32> + MIDINumFrom<f64> + MIDINumFrom<i64> + MIDINumFrom<u32> + MIDINumFrom<u64>
+    Num
+    + PartialOrd
+    + AddAssign
+    + SubAssign
+    + DivAssign
+    + MulAssign
+    + Copy
+    + Sized
+    + Debug
+    + MIDINumFrom<i32>
+    + MIDINumFrom<f32>
+    + MIDINumFrom<f64>
+    + MIDINumFrom<i64>
+    + MIDINumFrom<u32>
+    + MIDINumFrom<u64>
 {
 }
 
@@ -99,9 +113,9 @@ impl MIDINum for f64 {}
 
 #[cfg(test)]
 mod tests {
-    use crate::num::MIDINumInto;
+    use crate::num::{MIDINumFrom, MIDINumInto};
     #[test]
-    fn casts_delta() {
+    fn casts_delta_into() {
         let dt_i32: i32 = 10;
         let dt_u64: u64 = 10;
 
@@ -109,6 +123,22 @@ mod tests {
         let dt_f64: f64 = dt_i32.midi_num_into();
         let dt_u32: u32 = dt_u64.midi_num_into();
         let dt_i64: i64 = dt_u64.midi_num_into();
+
+        assert_eq!(dt_f32, 10f32);
+        assert_eq!(dt_f64, 10f64);
+        assert_eq!(dt_u32, 10u32);
+        assert_eq!(dt_i64, 10i64);
+    }
+
+    #[test]
+    fn casts_delta_from() {
+        let dt_i32: i32 = 10;
+        let dt_u64: u64 = 10;
+
+        let dt_f32 = f32::midi_num_from(dt_i32);
+        let dt_f64 = f64::midi_num_from(dt_i32);
+        let dt_u32 = u32::midi_num_from(dt_u64);
+        let dt_i64 = i64::midi_num_from(dt_u64);
 
         assert_eq!(dt_f32, 10f32);
         assert_eq!(dt_f64, 10f64);

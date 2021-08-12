@@ -47,7 +47,7 @@ pub trait SerializeEventWithDelta: SerializeEvent {
     }
 }
 
-pub trait MIDIEvent<T: MIDINum>: SerializeEvent {
+pub trait MIDIEvent<T: MIDINum>: SerializeEvent + std::fmt::Debug {
     fn delta(&self) -> T;
     fn delta_mut(&mut self) -> &mut T;
     fn key(&self) -> Option<u8>;

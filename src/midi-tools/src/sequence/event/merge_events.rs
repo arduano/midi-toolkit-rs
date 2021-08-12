@@ -54,15 +54,11 @@ pub fn merge_events_array<
             let len = seqences.len();
             let mut smallest_index = 0;
             let mut smallest_time = seqences[0].time;
-            let mut second_smallest_time = seqences[0].time;
             for i in 0..len {
                 let next = &seqences[i];
                 if next.time < smallest_time {
-                    second_smallest_time = smallest_time;
                     smallest_time = next.time;
                     smallest_index = i;
-                } else if next.time < second_smallest_time {
-                    second_smallest_time = next.time;
                 }
             }
             loop {
@@ -89,7 +85,7 @@ pub fn merge_events_array<
                         smallest.next = Some(next);
                     }
                 }
-                if seqences[smallest_index].time <= second_smallest_time {
+                if seqences[smallest_index].time != smallest_time {
                     break;
                 }
             }
