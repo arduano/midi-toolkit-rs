@@ -7,7 +7,7 @@ use std::iter::FromIterator;
 /// Unwraps all results from the iterator items.
 /// ## Example
 ///```
-///use midi_tools::{events::Event, pipe, sequence::to_vec};
+///use midi_toolkit::{events::Event, pipe, sequence::to_vec};
 ///
 ///let events = vec![
 ///    Ok(Event::new_note_on_event(100.0f64, 0, 64, 127)),
@@ -37,7 +37,7 @@ pub fn to_vec<T, I: Iterator<Item = T> + Sized>(iter: I) -> Vec<T> {
 /// Unwraps all results from the iterator items.
 /// ## Example
 ///```
-///use midi_tools::{events::Event, pipe, sequence::to_vec_result};
+///use midi_toolkit::{events::Event, pipe, sequence::to_vec_result};
 ///
 ///let events = vec![
 ///    Ok(Event::new_note_on_event(100.0f64, 0, 64, 127)),

@@ -1,16 +1,16 @@
 [package]
-name = "midi-tools-rs"
+name = "midi-toolkit-rs"
 version = "0.1.0"
 edition = "2018"
 workspace = "../.."
 
 [lib]
-name="midi_tools"
+name="midi_toolkit"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 gen-iter = "0.2.0"
 num-traits = "0.2.14"
-derive = { path = "../midi-tools-derive", package = "midi-tools-rs-derive" }
+derive = { path = "../midi-toolkit-derive", package = "midi-toolkit-rs-derive" }
 crossbeam-channel = "0.5.1"

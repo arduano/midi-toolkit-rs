@@ -3,7 +3,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use midi_tools::{
+use midi_toolkit::{
     events::Event,
     io::{MIDIFile, MIDIWriter},
     pipe,

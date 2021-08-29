@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use midi_tools::{
+use midi_toolkit::{
     events::{Event, MIDIEvent},
     io::{MIDIFile, MIDIWriter},
     num::MIDINum,

@@ -1,8 +1,8 @@
 [workspace]
 
 members = [
-    "src/midi-tools",
-    "src/midi-tools-derive",
+    "src/midi-toolkit",
+    "src/midi-toolkit-derive",
 ]
 
 [profile.release]

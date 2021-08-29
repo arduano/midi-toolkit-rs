@@ -9,7 +9,7 @@ pub trait MIDINumInto<T: MIDINum> {
     /// By default, supports: i32, i64, u32, u64, f32, f64
     /// ## Example
     /// ```
-    ///use midi_tools::num::{MIDINumInto};
+    ///use midi_toolkit::num::{MIDINumInto};
     ///
     ///let dt_i32: i32 = 10;
     ///let dt_u64: u64 = 10;
@@ -33,7 +33,7 @@ pub trait MIDINumFrom<T: MIDINum> {
     /// By default, supports: i32, i64, u32, u64, f32, f64
     /// ## Example
     /// ```
-    ///use midi_tools::num::{MIDINumInto};
+    ///use midi_toolkit::num::{MIDINumInto};
     ///
     ///let dt_i32: i32 = 10;
     ///let dt_u64: u64 = 10;

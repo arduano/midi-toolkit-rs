@@ -94,7 +94,7 @@ pub trait CastEventDelta<DT: MIDINum, Ev: MIDIEvent<DT>>: Clone {
     /// By default, supports: i32, i64, u32, u64, f32, f64
     /// ## Example
     /// ```
-    ///use midi_tools::events::{CastEventDelta, Event, MIDIEvent};
+    ///use midi_toolkit::events::{CastEventDelta, Event, MIDIEvent};
     ///
     ///let note_on_i32 = Event::new_note_on_event(10i32, 0, 64, 127);
     ///let note_on_u64 = Event::new_note_on_event(10u64, 0, 64, 127);

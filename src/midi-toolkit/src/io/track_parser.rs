@@ -2,7 +2,7 @@ use crate::events::*;
 
 use super::{errors::MIDIParseError, readers::TrackReader};
 
-/// test [`midi_tools::events::NoteOnEvent`]
+/// test [`midi_toolkit::events::NoteOnEvent`]
 pub struct TrackParser<T: TrackReader> {
     reader: T,
     pushback: i16,

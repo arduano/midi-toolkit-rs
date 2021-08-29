@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use midi_tools::{
+use midi_toolkit::{
     events::{Event, MIDIEvent},
     io::MIDIFile,
     num::MIDINum,
@@ -48,7 +48,6 @@ pub fn main() {
             dbg!(e);
         }
     }
-
 
     println!("Finished parsing midi, found {} notes", nc);
     println!("Elapsed {:?}", now.elapsed());
