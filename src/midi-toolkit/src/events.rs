@@ -1,5 +1,3 @@
-mod event;
-mod events;
 use std::io::Write;
 
 use crate::{
@@ -8,6 +6,9 @@ use crate::{
 };
 pub use event::Event;
 pub use events::*;
+
+mod event;
+mod events;
 
 pub fn encode_var_length_value(mut val: u64) -> Vec<u8> {
     let mut vec = Vec::new();
@@ -50,14 +51,19 @@ pub trait SerializeEventWithDelta: SerializeEvent {
 pub trait MIDIEvent<T: MIDINum>: SerializeEvent + std::fmt::Debug {
     fn delta(&self) -> T;
     fn delta_mut(&mut self) -> &mut T;
+
     fn key(&self) -> Option<u8>;
     fn key_mut(&mut self) -> Option<&mut u8>;
-    fn channel(&self) -> Option<u8>;
-    fn channel_mut(&mut self) -> Option<&mut u8>;
     fn as_key_event<'a>(&'a self) -> Option<Box<&'a dyn KeyEvent>>;
     fn as_key_event_mut<'a>(&'a mut self) -> Option<Box<&'a mut dyn KeyEvent>>;
+
+    fn channel(&self) -> Option<u8>;
+    fn channel_mut(&mut self) -> Option<&mut u8>;
     fn as_channel_event<'a>(&'a self) -> Option<Box<&'a dyn ChannelEvent>>;
     fn as_channel_event_mut<'a>(&'a mut self) -> Option<Box<&'a mut dyn ChannelEvent>>;
+
+    fn as_u32(&self) -> Option<u32>;
+    fn as_playback_event<'a>(&'a self) -> Option<Box<&'a dyn PlaybackEvent>>;
 
     #[inline(always)]
     fn set_delta(&mut self, delta: T) {
@@ -112,18 +118,29 @@ pub trait CastEventDelta<DT: MIDINum, Ev: MIDIEvent<DT>>: Clone {
     fn cast_delta(&self) -> Ev;
 }
 
+/// A trait that describes an event that is always connected to a channel
 pub trait ChannelEvent {
     fn channel(&self) -> u8;
     fn channel_mut(&mut self) -> &mut u8;
 }
 
+/// A trait that describes an event that is always connected to a key
 pub trait KeyEvent: ChannelEvent {
     fn key(&self) -> u8;
     fn key_mut(&mut self) -> &mut u8;
 }
+
+/// A trait that describes an event that is always serializable to u32 for playback
+pub trait PlaybackEvent: ChannelEvent {
+    fn as_u32(&self) -> u32;
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::events::{CastEventDelta, Event, MIDIEvent};
+    use crate::{
+        events::{CastEventDelta, Event, MIDIEvent},
+        io::FullRamTrackReader,
+    };
 
     #[test]
     fn test_cast_delta() {
@@ -139,5 +156,41 @@ mod tests {
         assert_eq!(note_on_f64.delta(), 10f64);
         assert_eq!(note_on_u32.delta(), 10u32);
         assert_eq!(note_on_i64.delta(), 10i64);
+    }
+
+    fn make_example_playback_events() -> Vec<Vec<u8>> {
+        vec![
+            vec![0x82, 0x40, 0x00],
+            vec![0x94, 0x40, 0x20],
+            vec![0xA3, 0x40, 0x20],
+            vec![0xA3, 0x40, 0x20],
+            vec![0xBF, 0x32, 0x12],
+            vec![0xC0, 0x14],
+            vec![0xD5, 0x7F],
+            vec![0xE7, 0x23, 0x68],
+        ]
+    }
+
+    fn parse_from_vec(mut vec: Vec<u8>) -> Event<u64> {
+        vec.insert(0, 64);
+        let reader = FullRamTrackReader::new_from_vec(vec);
+        let mut parser = crate::io::TrackParser::new(reader);
+        parser.next().unwrap().unwrap()
+    }
+
+    #[test]
+    fn end_to_end_parse_serialize() {
+        let events = make_example_playback_events();
+        for event_bytes in events.iter() {
+            let event = parse_from_vec(event_bytes.clone());
+            let serialized = event.as_u32().unwrap();
+            let mut compressed: u32 = 0x00;
+            let mut offset: u32 = 0;
+            for v in event_bytes.iter() {
+                compressed = compressed | ((*v as u32) << offset);
+                offset += 8;
+            }
+            assert_eq!(serialized, compressed);
+        }
     }
 }

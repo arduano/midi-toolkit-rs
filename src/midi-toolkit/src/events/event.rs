@@ -1,5 +1,5 @@
 use super::events::*;
-use super::{CastEventDelta, ChannelEvent, KeyEvent, MIDIEvent, SerializeEvent};
+use super::{CastEventDelta, ChannelEvent, KeyEvent, PlaybackEvent, MIDIEvent, SerializeEvent};
 use crate::io::MIDIWriteError;
 use crate::num::{MIDINum, MIDINumInto};
 use derive::EventImpl;
@@ -9,20 +9,27 @@ use std::io::Write;
 pub enum Event<D: MIDINum> {
     #[key]
     #[channel]
+    #[playback]
     NoteOn(NoteOnEvent<D>),
     #[key]
     #[channel]
+    #[playback]
     NoteOff(NoteOffEvent<D>),
     #[key]
     #[channel]
+    #[playback]
     PolyphonicKeyPressure(Box<PolyphonicKeyPressureEvent<D>>),
     #[channel]
+    #[playback]
     ControlChange(Box<ControlChangeEvent<D>>),
     #[channel]
+    #[playback]
     ProgramChange(Box<ProgramChangeEvent<D>>),
     #[channel]
+    #[playback]
     ChannelPressure(Box<ChannelPressureEvent<D>>),
     #[channel]
+    #[playback]
     PitchWheelChange(Box<PitchWheelChangeEvent<D>>),
     SystemExclusiveMessage(Box<SystemExclusiveMessageEvent<D>>),
     Undefined(Box<UndefinedEvent<D>>),

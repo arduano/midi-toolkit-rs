@@ -240,7 +240,7 @@ pub struct DiskTrackReader {
     pos: u64,                    // Relative to midi
     len: u64,                    //
     buffer: Option<Vec<u8>>,     //
-    buffer_start: u64,         // Relative to pos
+    buffer_start: u64,           // Relative to pos
     buffer_pos: usize,           // Relative buffer start
     unrequested_data_start: u64, // Relative to pos
 
@@ -252,6 +252,21 @@ pub struct FullRamTrackReader {
     bytes: Arc<Vec<u8>>,
     pos: usize,
     end: usize,
+}
+
+impl FullRamTrackReader {
+    pub fn new(bytes: Arc<Vec<u8>>, pos: usize, end: usize) -> FullRamTrackReader {
+        FullRamTrackReader { bytes, pos, end }
+    }
+
+    pub fn new_from_vec(bytes: Vec<u8>) -> FullRamTrackReader {
+        let len = bytes.len();
+        FullRamTrackReader {
+            bytes: Arc::new(bytes),
+            pos: 0,
+            end: len,
+        }
+    }
 }
 
 impl TrackReader for FullRamTrackReader {
@@ -289,7 +304,12 @@ impl DiskTrackReader {
 
         next_len = next_len.min(buffer.len());
 
-        self.reader.send_read_command(self.receiver_sender.clone(), buffer, self.unrequested_data_start + self.pos, next_len);
+        self.reader.send_read_command(
+            self.receiver_sender.clone(),
+            buffer,
+            self.unrequested_data_start + self.pos,
+            next_len,
+        );
 
         self.unrequested_data_start += next_len as u64;
     }

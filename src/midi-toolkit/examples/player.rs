@@ -1,12 +1,11 @@
 use std::{
-    sync::atomic::AtomicBool,
     thread,
     time::{Duration, Instant},
 };
 
 use kdmapi::KDMAPI;
 use midi_toolkit::{
-    events::{Event, MIDIEvent},
+    events::MIDIEvent,
     io::MIDIFile,
     pipe,
     sequence::{
@@ -30,8 +29,6 @@ fn main() {
 
     let kdmapi = KDMAPI.open_stream();
 
-    kdmapi.send_direct_data(0x7F4090);
-
     let now = Instant::now();
     let mut time = 0.0;
     for e in merged {
@@ -43,12 +40,8 @@ fn main() {
             }
         }
 
-        match e {
-            Event::NoteOn(e) => {}
-            Event::NoteOff(e) => {}
-            Event::ControlChange(e) => {}
-            Event::PitchWheelChange(e) => {}
-            _ => {}
+        if let Some(serialized) = e.as_u32() {
+            kdmapi.send_direct_data(serialized);
         }
     }
 }

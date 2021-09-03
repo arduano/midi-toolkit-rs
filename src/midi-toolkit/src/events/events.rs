@@ -3,7 +3,8 @@ use crate::io::MIDIWriteError;
 
 use super::event::Event;
 use super::{
-    CastEventDelta, ChannelEvent, KeyEvent, MIDIEvent, MIDINum, MIDINumInto, SerializeEvent,
+    CastEventDelta, ChannelEvent, KeyEvent, MIDIEvent, MIDINum, MIDINumInto, PlaybackEvent,
+    SerializeEvent,
 };
 use derive::{CastEventDelta, MIDIEvent, NewEvent};
 
@@ -59,6 +60,7 @@ impl TextEventKind {
 }
 
 #[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
+#[playback]
 pub struct NoteOnEvent<D: MIDINum> {
     #[delta]
     pub delta: D,
@@ -76,7 +78,14 @@ impl<D: MIDINum> SerializeEvent for NoteOnEvent<D> {
     }
 }
 
+impl<D: MIDINum> PlaybackEvent for NoteOnEvent<D> {
+    fn as_u32(&self) -> u32 {
+        (0x90 | self.channel as u32) | (self.key as u32) << 8 | (self.velocity as u32) << 16
+    }
+}
+
 #[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
+#[playback]
 pub struct NoteOffEvent<D: MIDINum> {
     #[delta]
     pub delta: D,
@@ -93,7 +102,14 @@ impl<D: MIDINum> SerializeEvent for NoteOffEvent<D> {
     }
 }
 
+impl<D: MIDINum> PlaybackEvent for NoteOffEvent<D> {
+    fn as_u32(&self) -> u32 {
+        (0x80 | self.channel as u32) | (self.key as u32) << 8
+    }
+}
+
 #[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
+#[playback]
 pub struct PolyphonicKeyPressureEvent<D: MIDINum> {
     #[delta]
     pub delta: D,
@@ -111,7 +127,14 @@ impl<D: MIDINum> SerializeEvent for PolyphonicKeyPressureEvent<D> {
     }
 }
 
+impl<D: MIDINum> PlaybackEvent for PolyphonicKeyPressureEvent<D> {
+    fn as_u32(&self) -> u32 {
+        (0xA0 | self.channel as u32) | (self.key as u32) << 8 | (self.velocity as u32) << 16
+    }
+}
+
 #[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
+#[playback]
 pub struct ControlChangeEvent<D: MIDINum> {
     #[delta]
     pub delta: D,
@@ -128,7 +151,14 @@ impl<D: MIDINum> SerializeEvent for ControlChangeEvent<D> {
     }
 }
 
+impl<D: MIDINum> PlaybackEvent for ControlChangeEvent<D> {
+    fn as_u32(&self) -> u32 {
+        (0xB0 | self.channel as u32) | (self.controller as u32) << 8 | (self.value as u32) << 16
+    }
+}
+
 #[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
+#[playback]
 pub struct ProgramChangeEvent<D: MIDINum> {
     #[delta]
     pub delta: D,
@@ -144,7 +174,14 @@ impl<D: MIDINum> SerializeEvent for ProgramChangeEvent<D> {
     }
 }
 
+impl<D: MIDINum> PlaybackEvent for ProgramChangeEvent<D> {
+    fn as_u32(&self) -> u32 {
+        (0xC0 | self.channel as u32) | (self.program as u32) << 8
+    }
+}
+
 #[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
+#[playback]
 pub struct ChannelPressureEvent<D: MIDINum> {
     #[delta]
     pub delta: D,
@@ -160,7 +197,14 @@ impl<D: MIDINum> SerializeEvent for ChannelPressureEvent<D> {
     }
 }
 
+impl<D: MIDINum> PlaybackEvent for ChannelPressureEvent<D> {
+    fn as_u32(&self) -> u32 {
+        (0xD0 | self.channel as u32) | (self.pressure as u32) << 8
+    }
+}
+
 #[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
+#[playback]
 pub struct PitchWheelChangeEvent<D: MIDINum> {
     #[delta]
     pub delta: D,
@@ -178,6 +222,15 @@ impl<D: MIDINum> SerializeEvent for PitchWheelChangeEvent<D> {
             ((value >> 7) & 0x7F) as u8,
         ];
         midi_error!(buf.write(&event))
+    }
+}
+
+impl<D: MIDINum> PlaybackEvent for PitchWheelChangeEvent<D> {
+    fn as_u32(&self) -> u32 {
+        let value = self.pitch + 8192;
+        let val1 = value & 0x7F;
+        let val2 = (value >> 7) & 0x7F;
+        (0xE0 | self.channel as u32) | (val1 as u32) << 8 | (val2 as u32) << 16
     }
 }
 
@@ -462,3 +515,4 @@ impl<D: MIDINum> SerializeEvent for KeySignatureEvent<D> {
         midi_error!(buf.write(&event))
     }
 }
+
