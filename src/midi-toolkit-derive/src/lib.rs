@@ -94,18 +94,6 @@ pub fn midi_event(input: TokenStream) -> TokenStream {
                 }
             });
         } else {
-            generated_impl.push(quote! {
-                #[inline(always)]
-                pub fn as_u32(&self) -> Option<u32> {
-                    None
-                }
-
-                #[inline(always)]
-                pub fn as_playback_event<'a>(&'a self) -> Option<Box<&'a dyn PlaybackEvent>> {
-                    None
-                }
-            });
-
             generated_trait_impl.push(quote! {
                 #[inline(always)]
                 fn as_u32(&self) -> Option<u32> {
@@ -121,18 +109,6 @@ pub fn midi_event(input: TokenStream) -> TokenStream {
 
         match key_field {
             None => {
-                generated_impl.push(quote! {
-                    #[inline(always)]
-                    pub fn key(&self) -> Option<u8> {
-                        None
-                    }
-
-                    #[inline(always)]
-                    pub fn key_mut(&mut self) -> Option<&mut u8> {
-                        None
-                    }
-                });
-
                 generated_trait_impl.push(quote! {
                     #[inline(always)]
                     fn key(&self) -> Option<u8> {
@@ -218,18 +194,6 @@ pub fn midi_event(input: TokenStream) -> TokenStream {
 
         match channel_field {
             None => {
-                generated_impl.push(quote! {
-                    #[inline(always)]
-                    pub fn channel(&self) -> Option<u8> {
-                        None
-                    }
-
-                    #[inline(always)]
-                    pub fn channel_mut(&mut self) -> Option<&mut u8> {
-                        None
-                    }
-                });
-
                 generated_trait_impl.push(quote! {
                     #[inline(always)]
                     fn channel(&self) -> Option<u8> {
@@ -527,8 +491,8 @@ pub fn event_impl(input: TokenStream) -> TokenStream {
 
         struct DontWrap;
         impl Mapper for DontWrap {
-            fn wrap(&self, tokens: TokenStream2) -> TokenStream2 {
-                tokens
+            fn wrap(&self, _: TokenStream2) -> TokenStream2 {
+                quote! { None }
             }
         }
 
