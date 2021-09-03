@@ -1,6 +1,6 @@
 use crate::num::MIDINum;
 
-pub trait MIDINote<T: MIDINum> {
+pub trait MIDINote<T: MIDINum>: std::fmt::Debug {
     fn start(&self) -> T;
     fn start_mut(&mut self) -> &mut T;
     fn len(&self) -> T;
@@ -59,6 +59,7 @@ pub trait MIDINote<T: MIDINum> {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct Note<T: MIDINum> {
     pub start: T,
     pub len: T,

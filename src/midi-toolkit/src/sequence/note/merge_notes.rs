@@ -1,20 +1,20 @@
 use gen_iter::GenIter;
 
-use crate::{events::MIDIEvent, num::MIDINum, unwrap, yield_error};
+use crate::{notes::MIDINote, num::MIDINum, unwrap, yield_error};
 
-/// Merge an array of event iterators together into one iterator.
-pub fn merge_events_array<
+/// Merge an array of note iterators together into one iterator.
+pub fn merge_notes_array<
     T: MIDINum,
-    E: MIDIEvent<T>,
+    N: MIDINote<T>,
     Err,
-    I: Iterator<Item = Result<E, Err>> + Sized,
+    I: Iterator<Item = Result<N, Err>> + Sized,
 >(
     array: Vec<I>,
-) -> impl Iterator<Item = Result<E, Err>> {
-    struct SeqTime<T: MIDINum, E: MIDIEvent<T>, Err, I: Iterator<Item = Result<E, Err>> + Sized> {
+) -> impl Iterator<Item = Result<N, Err>> {
+    struct SeqTime<T: MIDINum, N: MIDINote<T>, Err, I: Iterator<Item = Result<N, Err>> + Sized> {
         iter: I,
         time: T,
-        next: Option<E>,
+        next: Option<N>,
     }
 
     GenIter(move || {
@@ -27,7 +27,7 @@ pub fn merge_events_array<
                     Err(e) => yield_error!(Err(e)),
                     Ok(e) => {
                         let s = SeqTime {
-                            time: e.delta(),
+                            time: e.start(),
                             next: Some(e),
                             iter: seq,
                         };
@@ -37,7 +37,6 @@ pub fn merge_events_array<
             }
         }
 
-        let mut time = T::zero();
         while seqences.len() > 0 {
             let len = seqences.len();
             let mut smallest_index = 0;
@@ -50,17 +49,14 @@ pub fn merge_events_array<
                 }
             }
             loop {
-                let (event, next) = {
+                let (note, next) = {
                     let smallest = &mut seqences[smallest_index];
 
-                    let mut event = smallest.next.take().unwrap();
-                    let new_delta = smallest.time - time;
-                    event.set_delta(new_delta);
-                    time = smallest.time;
+                    let note = smallest.next.take().unwrap();
 
-                    (event, smallest.iter.next())
+                    (note, smallest.iter.next())
                 };
-                yield Ok(event);
+                yield Ok(note);
                 match next {
                     None => {
                         seqences.remove(smallest_index);
@@ -69,7 +65,7 @@ pub fn merge_events_array<
                     Some(next) => {
                         let next = unwrap!(next);
                         let mut smallest = &mut seqences[smallest_index];
-                        smallest.time += next.delta();
+                        smallest.time = next.start();
                         smallest.next = Some(next);
                     }
                 }
