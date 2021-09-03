@@ -253,6 +253,16 @@ impl<'a> TrackWriter<'a> {
         event.serialize_event_with_delta(writer)
     }
 
+    pub fn write_events_iter<T: SerializeEventWithDelta>(
+        &mut self,
+        events: impl Iterator<Item = T>,
+    ) -> Result<(), MIDIWriteError> {
+        for event in events {
+            self.write_event(event)?;
+        }
+        Ok(())
+    }
+
     pub fn write_bytes(&mut self, bytes: &[u8]) -> Result<(), MIDIWriteError> {
         let writer = self.get_writer_mut();
         midi_error_discard!(writer.write(bytes))

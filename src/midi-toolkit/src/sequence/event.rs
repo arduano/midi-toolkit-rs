@@ -6,3 +6,5 @@ mod merge_events;
 pub use merge_events::*;
 mod cancel_tempo_events;
 pub use cancel_tempo_events::*;
+mod filter_events;
+pub use filter_events::*;

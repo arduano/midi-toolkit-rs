@@ -18,7 +18,7 @@ pub fn merge_notes_array<
     }
 
     GenIter(move || {
-        let mut seqences = Vec::new();
+        let mut sequences = Vec::new();
         for mut seq in array.into_iter() {
             let first = seq.next();
             match first {
@@ -31,18 +31,18 @@ pub fn merge_notes_array<
                             next: Some(e),
                             iter: seq,
                         };
-                        seqences.push(s);
+                        sequences.push(s);
                     }
                 },
             }
         }
 
-        while seqences.len() > 0 {
-            let len = seqences.len();
+        while sequences.len() > 0 {
+            let len = sequences.len();
             let mut smallest_index = 0;
-            let mut smallest_time = seqences[0].time;
+            let mut smallest_time = sequences[0].time;
             for i in 0..len {
-                let next = &seqences[i];
+                let next = &sequences[i];
                 if next.time < smallest_time {
                     smallest_time = next.time;
                     smallest_index = i;
@@ -50,7 +50,7 @@ pub fn merge_notes_array<
             }
             loop {
                 let (note, next) = {
-                    let smallest = &mut seqences[smallest_index];
+                    let smallest = &mut sequences[smallest_index];
 
                     let note = smallest.next.take().unwrap();
 
@@ -59,17 +59,17 @@ pub fn merge_notes_array<
                 yield Ok(note);
                 match next {
                     None => {
-                        seqences.remove(smallest_index);
+                        sequences.remove(smallest_index);
                         break;
                     }
                     Some(next) => {
                         let next = unwrap!(next);
-                        let mut smallest = &mut seqences[smallest_index];
+                        let mut smallest = &mut sequences[smallest_index];
                         smallest.time = next.start();
                         smallest.next = Some(next);
                     }
                 }
-                if seqences[smallest_index].time != smallest_time {
+                if sequences[smallest_index].time != smallest_time {
                     break;
                 }
             }

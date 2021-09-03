@@ -52,7 +52,6 @@ pub fn midi_event(input: TokenStream) -> TokenStream {
             );
         }
 
-        // fields.iter().last().unwrap().attrs[0].
         let mut generated_impl = Vec::new();
         let mut generated_trait_impl = Vec::new();
         let mut generated_traits = Vec::new();
