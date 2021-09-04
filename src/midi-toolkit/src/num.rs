@@ -1,4 +1,7 @@
-use std::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
+use std::{
+    fmt::Display,
+    ops::{AddAssign, DivAssign, MulAssign, SubAssign},
+};
 
 use num_traits::Num;
 use std::fmt::Debug;
@@ -61,12 +64,21 @@ pub trait MIDINum:
     + Copy
     + Sized
     + Debug
+    + Display
+    + Send
+    + Sync
     + MIDINumFrom<i32>
     + MIDINumFrom<f32>
     + MIDINumFrom<f64>
     + MIDINumFrom<i64>
     + MIDINumFrom<u32>
     + MIDINumFrom<u64>
+    + MIDINumInto<i32>
+    + MIDINumInto<f32>
+    + MIDINumInto<f64>
+    + MIDINumInto<i64>
+    + MIDINumInto<u32>
+    + MIDINumInto<u64>
 {
 }
 

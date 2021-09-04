@@ -8,3 +8,5 @@ mod cancel_tempo_events;
 pub use cancel_tempo_events::*;
 mod filter_events;
 pub use filter_events::*;
+mod stats;
+pub use stats::*;

@@ -30,6 +30,9 @@ macro_rules! pipe {
     ($var:tt . $function: ident $( :: < $($types: tt $(< $types2: tt >)? ),* > )? ( $($params: expr),* ) $($calls:tt)*) => {
         pipe!({$var.$function $( :: < $($types $(< $types2 >)?),* > )? ( $($params),* )} $($calls)*)
     };
+    ($var:tt . $field: ident $($calls:tt)* ) => {
+        pipe!({ $var.$field } $($calls)*)
+    };
     ($var:tt) => {
         $var
     };

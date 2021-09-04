@@ -14,6 +14,7 @@ gen-iter = "0.2.0"
 num-traits = "0.2.14"
 derive = { path = "../midi-toolkit-derive", package = "midi-toolkit-rs-derive" }
 crossbeam-channel = "0.5.1"
+rayon = "1.5.1"
 
 [dev-dependencies]
 kdmapi = { git = "https://github.com/arduano/kdmapi", rev = "a8013dd" }
