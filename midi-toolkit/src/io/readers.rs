@@ -237,13 +237,15 @@ pub trait TrackReader {
 
 pub struct DiskTrackReader {
     reader: Arc<BufferReadProvider>,
-    pos: u64,                    // Relative to midi
-    len: u64,                    //
-    buffer: Option<Vec<u8>>,     //
-    buffer_start: u64,           // Relative to pos
-    buffer_pos: usize,           // Relative buffer start
-    unrequested_data_start: u64, // Relative to pos
+    pos: u64,                                             // Relative to midi
+    len: u64,                                             //
+    buffer: Option<Vec<u8>>,                              //
+    next_buffer: Option<Result<Vec<u8>, MIDIParseError>>, // The next buffer, for keeping track of the error
+    buffer_start: u64,                                    // Relative to pos
+    buffer_pos: usize,                                    // Relative buffer start
+    unrequested_data_start: u64,                          // Relative to pos
 
+    sent_count: usize, // The number of buffers in queue
     receiver: Receiver<Result<Vec<u8>, io::Error>>,
     receiver_sender: Arc<Sender<Result<Vec<u8>, io::Error>>>,
 }
@@ -312,11 +314,21 @@ impl DiskTrackReader {
         );
 
         self.unrequested_data_start += next_len as u64;
+
+        self.sent_count += 1;
+    }
+
+    fn receive_next_buffer(&mut self) -> Option<Result<Vec<u8>, MIDIParseError>> {
+        if self.sent_count == 0 {
+            return None;
+        } else {
+            self.sent_count -= 1;
+            let buf = midi_parse_error!(self.receiver.recv().unwrap());
+            Some(buf)
+        }
     }
 
     pub fn new(reader: Arc<BufferReadProvider>, start: u64, len: u64) -> DiskTrackReader {
-        // let buffer_len = ((1 << 20) as usize).min(len);
-
         let buffer_count = 4;
 
         let (send, receive) = bounded(buffer_count);
@@ -327,9 +339,11 @@ impl DiskTrackReader {
             pos: start,
             len: len as u64,
             buffer: None,
+            next_buffer: None,
             buffer_start: 0,
             buffer_pos: 0,
             unrequested_data_start: 0,
+            sent_count: 0,
             receiver: receive,
             receiver_sender: send,
         };
@@ -337,6 +351,8 @@ impl DiskTrackReader {
         for _ in 0..buffer_count {
             reader.send_next_read(None);
         }
+
+        reader.next_buffer = reader.receive_next_buffer();
 
         reader
     }
@@ -347,8 +363,12 @@ impl TrackReader for DiskTrackReader {
     fn read(&mut self) -> Result<u8, MIDIParseError> {
         match self.buffer {
             None => {
-                let buf = midi_parse_error!(self.receiver.recv().unwrap())?;
-                self.buffer = Some(buf);
+                if let Some(next) = self.next_buffer.take() {
+                    self.buffer = Some(next?);
+                } else {
+                    return Err(MIDIParseError::UnexpectedTrackEnd);
+                }
+                self.next_buffer = self.receive_next_buffer();
             }
             Some(_) => {}
         }
