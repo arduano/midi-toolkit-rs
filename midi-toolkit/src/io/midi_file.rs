@@ -43,7 +43,7 @@ macro_rules! midi_error {
 impl<T: MIDIReader<R>, R: TrackReader> MIDIFileParser<T, R> {
     fn new_from_disk_reader(
         reader: T,
-        read_progress: Option<&dyn Fn(u32)>,
+        read_progress: Option<&mut dyn Fn(u32)>,
     ) -> Result<Self, MIDILoadError> {
         fn bytes_to_val(bytes: &[u8]) -> u32 {
             assert!(bytes.len() <= 4);
@@ -105,10 +105,9 @@ impl<T: MIDIReader<R>, R: TrackReader> MIDIFileParser<T, R> {
             track_positions.push(TrackPos { len, pos });
             pos += len as u64;
 
-            match read_progress {
-                Some(progress) => progress(track_count),
-                _ => {}
-            };
+            if let Some(progress) = read_progress.as_ref() {
+                (*progress)(track_count);
+            }
         }
 
         track_positions.shrink_to_fit();
@@ -163,7 +162,7 @@ pub struct MIDIFile;
 impl MIDIFile {
     pub fn open(
         filename: &str,
-        read_progress: Option<&dyn Fn(u32)>,
+        read_progress: Option<&mut dyn Fn(u32)>,
     ) -> Result<MIDIFileParser<DiskReader, DiskTrackReader>, MIDILoadError> {
         let reader = midi_error!(File::open(filename))?;
         let reader = DiskReader::new(reader)?;
@@ -173,7 +172,7 @@ impl MIDIFile {
 
     pub fn open_in_ram(
         filename: &str,
-        read_progress: Option<&dyn Fn(u32)>,
+        read_progress: Option<&mut dyn Fn(u32)>,
     ) -> Result<MIDIFileParser<RAMReader, FullRamTrackReader>, MIDILoadError> {
         let reader = midi_error!(File::open(filename))?;
         let reader = RAMReader::new(reader)?;
@@ -183,7 +182,7 @@ impl MIDIFile {
 
     pub fn open_from_stream<T: 'static + ReadSeek>(
         stream: T,
-        read_progress: Option<&dyn Fn(u32)>,
+        read_progress: Option<&mut dyn Fn(u32)>,
     ) -> Result<MIDIFileParser<DiskReader, DiskTrackReader>, MIDILoadError> {
         let reader = DiskReader::new(stream)?;
 
@@ -192,7 +191,7 @@ impl MIDIFile {
 
     pub fn open_from_stream_in_ram<T: 'static + ReadSeek>(
         stream: T,
-        read_progress: Option<&dyn Fn(u32)>,
+        read_progress: Option<&mut dyn Fn(u32)>,
     ) -> Result<MIDIFileParser<RAMReader, FullRamTrackReader>, MIDILoadError> {
         let reader = RAMReader::new(stream)?;
 

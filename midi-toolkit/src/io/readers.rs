@@ -289,7 +289,7 @@ impl DiskTrackReader {
     }
 
     fn next_buffer_req_length(&self) -> usize {
-        (self.len - self.unrequested_data_start).min(1 << 18) as usize
+        (self.len - self.unrequested_data_start).min(1 << 20) as usize
     }
 
     fn send_next_read(&mut self, buffer: Option<Vec<u8>>) {
@@ -329,7 +329,7 @@ impl DiskTrackReader {
     }
 
     pub fn new(reader: Arc<BufferReadProvider>, start: u64, len: u64) -> DiskTrackReader {
-        let buffer_count = 4;
+        let buffer_count = 2;
 
         let (send, receive) = bounded(buffer_count);
         let send = Arc::new(send);
