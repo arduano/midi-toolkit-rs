@@ -1,9 +1,11 @@
-use crossbeam_channel::{bounded, unbounded, Receiver, Sender};
+use crossbeam_channel::{bounded, unbounded, Sender};
 use std::{
     io::{self, SeekFrom},
     sync::Arc,
     thread::{self, JoinHandle},
 };
+
+use crate::DelayedReceiver;
 
 use super::{
     errors::{MIDILoadError, MIDIParseError},
@@ -231,23 +233,21 @@ impl MIDIReader<FullRamTrackReader> for RAMReader {
     }
 }
 
-pub trait TrackReader {
+pub trait TrackReader: Send + Sync {
     fn read(&mut self) -> Result<u8, MIDIParseError>;
 }
 
 pub struct DiskTrackReader {
     reader: Arc<BufferReadProvider>,
-    pos: u64,                                             // Relative to midi
-    len: u64,                                             //
-    buffer: Option<Vec<u8>>,                              //
-    next_buffer: Option<Result<Vec<u8>, MIDIParseError>>, // The next buffer, for keeping track of the error
-    buffer_start: u64,                                    // Relative to pos
-    buffer_pos: usize,                                    // Relative buffer start
-    unrequested_data_start: u64,                          // Relative to pos
+    pos: u64,                    // Relative to midi
+    len: u64,                    //
+    buffer: Option<Vec<u8>>,     //
+    buffer_start: u64,           // Relative to pos
+    buffer_pos: usize,           // Relative buffer start
+    unrequested_data_start: u64, // Relative to pos
 
-    sent_count: usize, // The number of buffers in queue
-    receiver: Receiver<Result<Vec<u8>, io::Error>>,
-    receiver_sender: Arc<Sender<Result<Vec<u8>, io::Error>>>,
+    receiver: DelayedReceiver<Result<Vec<u8>, io::Error>>,
+    receiver_sender: Option<Arc<Sender<Result<Vec<u8>, io::Error>>>>, // Becomes None when there's nothing left to read
 }
 
 pub struct FullRamTrackReader {
@@ -289,11 +289,12 @@ impl DiskTrackReader {
     }
 
     fn next_buffer_req_length(&self) -> usize {
-        (self.len - self.unrequested_data_start).min(1 << 20) as usize
+        (self.len - self.unrequested_data_start).min(1 << 19) as usize
     }
 
     fn send_next_read(&mut self, buffer: Option<Vec<u8>>) {
         if self.finished_sending_reads() {
+            self.receiver_sender.take();
             return;
         }
 
@@ -307,31 +308,26 @@ impl DiskTrackReader {
         next_len = next_len.min(buffer.len());
 
         self.reader.send_read_command(
-            self.receiver_sender.clone(),
+            self.receiver_sender.clone().unwrap(),
             buffer,
             self.unrequested_data_start + self.pos,
             next_len,
         );
 
         self.unrequested_data_start += next_len as u64;
-
-        self.sent_count += 1;
     }
 
     fn receive_next_buffer(&mut self) -> Option<Result<Vec<u8>, MIDIParseError>> {
-        if self.sent_count == 0 {
-            return None;
-        } else {
-            self.sent_count -= 1;
-            let buf = midi_parse_error!(self.receiver.recv().unwrap());
-            Some(buf)
+        match self.receiver.recv() {
+            Ok(v) => Some(midi_parse_error!(v)),
+            Err(_) => None,
         }
     }
 
     pub fn new(reader: Arc<BufferReadProvider>, start: u64, len: u64) -> DiskTrackReader {
-        let buffer_count = 2;
+        let buffer_count = 3;
 
-        let (send, receive) = bounded(buffer_count);
+        let (send, receive) = unbounded();
         let send = Arc::new(send);
 
         let mut reader = DiskTrackReader {
@@ -339,20 +335,18 @@ impl DiskTrackReader {
             pos: start,
             len: len as u64,
             buffer: None,
-            next_buffer: None,
             buffer_start: 0,
             buffer_pos: 0,
             unrequested_data_start: 0,
-            sent_count: 0,
-            receiver: receive,
-            receiver_sender: send,
+            receiver: DelayedReceiver::new(receive),
+            receiver_sender: Some(send),
         };
 
         for _ in 0..buffer_count {
             reader.send_next_read(None);
         }
 
-        reader.next_buffer = reader.receive_next_buffer();
+        reader.receiver.wait_first();
 
         reader
     }
@@ -363,12 +357,11 @@ impl TrackReader for DiskTrackReader {
     fn read(&mut self) -> Result<u8, MIDIParseError> {
         match self.buffer {
             None => {
-                if let Some(next) = self.next_buffer.take() {
+                if let Some(next) = self.receive_next_buffer() {
                     self.buffer = Some(next?);
                 } else {
                     return Err(MIDIParseError::UnexpectedTrackEnd);
                 }
-                self.next_buffer = self.receive_next_buffer();
             }
             Some(_) => {}
         }

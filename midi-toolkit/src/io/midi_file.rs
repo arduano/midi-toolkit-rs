@@ -4,7 +4,15 @@ use std::{
     marker::PhantomData,
 };
 
-use crate::events::Event;
+use crate::{
+    events::Event,
+    pipe,
+    sequence::{
+        channels_into_threadpool,
+        event::{grouped_multithreaded_merge_arrays, merge_events_array},
+        to_vec,
+    },
+};
 use std::fmt::Debug;
 
 use super::{
@@ -44,7 +52,7 @@ macro_rules! midi_error {
     };
 }
 
-impl<T: MIDIReader<R>, R: TrackReader> MIDIFileParser<T, R> {
+impl<T: 'static + MIDIReader<R>, R: 'static + TrackReader> MIDIFileParser<T, R> {
     fn new_from_disk_reader(
         reader: T,
         mut read_progress: Option<&mut dyn FnMut(u32)>,
@@ -138,6 +146,27 @@ impl<T: MIDIReader<R>, R: TrackReader> MIDIFileParser<T, R> {
             tracks.push(self.iter_track(i));
         }
         tracks.into_iter()
+    }
+
+    pub fn iter_all_events_merged(
+        &self,
+    ) -> impl Iterator<Item = Result<Event<u64>, MIDIParseError>> {
+        pipe!(
+            self.iter_all_tracks()
+            |>to_vec()
+            |>merge_events_array()
+        )
+    }
+
+    pub fn iter_all_events_merged_multithreaded(
+        &self,
+    ) -> impl Iterator<Item = Result<Event<u64>, MIDIParseError>> {
+        pipe!(
+            self.iter_all_tracks()
+            |>to_vec()
+            |>channels_into_threadpool()
+            |>grouped_multithreaded_merge_arrays()
+        )
     }
 
     pub fn iter_track(

@@ -31,8 +31,8 @@ fn do_run<T: Fn()>(name: &str, repeats: i32, run: T) {
 }
 
 fn main() {
-    let filename = "D:/Midis/tau2.5.9.mid";
-    let repeats = 1;
+    let filename = "D:/Midis/Ra Ra Rasputin Ultimate Black MIDI Final.mid";
+    let repeats = 4;
 
     println!("Opening midi...");
     let file = MIDIFile::open(filename, None).unwrap();
@@ -56,6 +56,10 @@ fn main() {
         for track in file.iter_all_tracks() {
             for _ in pipe!(track) {}
         }
+    });
+    do_run("Multithreaded merge all tracks together while parsing", repeats, || {
+        let merged = pipe!(file.iter_all_events_merged_multithreaded());
+        for _ in merged {}
     });
     do_run("Merge all tracks together while parsing", repeats, || {
         let merged = pipe!(file.iter_all_tracks()|>to_vec()|>merge_events_array());

@@ -1,6 +1,14 @@
+use std::iter;
+
 use gen_iter::GenIter;
 
-use crate::{events::MIDIEvent, num::MIDINum, unwrap, yield_error};
+use crate::{
+    events::MIDIEvent,
+    num::MIDINum,
+    pipe,
+    sequence::{threaded_buffer, to_vec},
+    unwrap, yield_error,
+};
 
 struct SeqTime<T: MIDINum, E: MIDIEvent<T>, Err, I: Iterator<Item = Result<E, Err>> + Sized> {
     iter: I,
@@ -183,4 +191,64 @@ pub fn merge_events<
             }
         }
     })
+}
+
+/// Group tracks into separate threads and merge them together
+pub fn grouped_multithreaded_merge_arrays<
+    T: 'static + MIDINum,
+    E: 'static + MIDIEvent<T> + Sync + Send,
+    Err: 'static + Sync + Send,
+    I: 'static + Iterator<Item = Result<E, Err>> + Sized + Sync + Send,
+>(
+    mut array: Vec<I>,
+) -> impl Iterator<Item = Result<E, Err>> {
+    let buffer_size = 1 << 20;
+    if array.len() == 0 {
+        return threaded_buffer(iter::empty(), 1);
+    }
+    if array.len() == 1 {
+        return threaded_buffer(array.remove(0), buffer_size);
+    }
+
+    let depth = 2;
+
+    let count = 1 << depth;
+
+    let mut iterator_groups = Vec::new();
+
+    for _ in 0..count {
+        iterator_groups.push(Vec::new());
+    }
+
+    for (i, iter) in array.into_iter().enumerate() {
+        let i = i % count;
+        iterator_groups[i].push(iter);
+    }
+
+    let mut iterator_groups =
+        pipe!(
+            iterator_groups.into_iter()
+            .map(|g| pipe!(
+                g
+                |>merge_events_array()
+                |>threaded_buffer(buffer_size)
+            ))
+            |>to_vec()
+        );
+
+    let mut new_groups = Vec::new();
+    while iterator_groups.len() > 1 {
+        while iterator_groups.len() != 0 {
+            if iterator_groups.len() >= 2 {
+                let merge = merge_events(iterator_groups.remove(0), iterator_groups.remove(0));
+                new_groups.push(threaded_buffer(merge, buffer_size));
+            } else {
+                new_groups.push(iterator_groups.remove(0));
+            }
+        }
+        iterator_groups = new_groups;
+        new_groups = Vec::new();
+    }
+
+    threaded_buffer(iterator_groups.remove(0), buffer_size)
 }

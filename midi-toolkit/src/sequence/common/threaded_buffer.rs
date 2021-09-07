@@ -1,22 +1,173 @@
-use crossbeam_channel::{IntoIter, bounded};
-use std::thread;
+use crossbeam_channel::{bounded, unbounded, IntoIter, Sender};
+use gen_iter::GenIter;
+use std::{
+    collections::VecDeque,
+    sync::{Arc, RwLock},
+    thread,
+};
+
+use crate::sequence::common::to_vec;
+
+pub struct ThreadBufferIter<T> {
+    backward_tx: Sender<VecDeque<T>>,
+    bufs_iter: IntoIter<VecDeque<T>>,
+    current_buf: Option<VecDeque<T>>,
+}
+
+impl<T> Iterator for ThreadBufferIter<T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<T> {
+        loop {
+            if let Some(ref mut buf) = self.current_buf {
+                match buf.pop_front() {
+                    Some(item) => return Some(item),
+                    None => {
+                        self.backward_tx.send(self.current_buf.take().unwrap()).ok();
+                        self.current_buf = self.bufs_iter.next();
+                    }
+                }
+            } else {
+                return None;
+            }
+        }
+    }
+}
 
 pub fn threaded_buffer<
     T: 'static + Send + Sync,
     I: 'static + Iterator<Item = T> + Sized + Send + Sync,
 >(
     iter: I,
-    max_buffer_size: usize,
-) -> IntoIter<T> {
-    let (tx, rx) = bounded(max_buffer_size);
+    buffer_size: usize,
+) -> ThreadBufferIter<T> {
+    let (forward_tx, forward_rx) = unbounded::<VecDeque<T>>();
+    let (backward_tx, backward_rx) = unbounded::<VecDeque<T>>();
     thread::spawn(move || {
-        for item in iter {
-            match tx.send(item) {
-                Ok(_) => (),
-                Err(_) => break,
+        let mut iter = iter;
+        let mut ended = false;
+        for mut vector in backward_rx.into_iter() {
+            if !ended {
+                for _ in 0..buffer_size {
+                    match iter.next() {
+                        Some(item) => vector.push_back(item),
+                        None => {
+                            ended = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if vector.len() > 0 {
+                forward_tx.send(vector).ok();
+            } else {
+                break;
             }
         }
     });
 
-    rx.into_iter()
+    for _ in 0..3 {
+        backward_tx.send(VecDeque::with_capacity(buffer_size)).ok();
+    }
+
+    let mut bufs_iter = forward_rx.into_iter();
+    let current_buf = bufs_iter.next();
+
+    ThreadBufferIter {
+        bufs_iter,
+        current_buf,
+        backward_tx,
+    }
+}
+
+pub fn channels_into_threadpool<
+    T: 'static + Send + Sync,
+    I: 'static + Iterator<Item = T> + Sized + Send + Sync,
+>(
+    iters: Vec<I>,
+) -> Vec<impl Iterator<Item = T> + Sync + Send> {
+    let buffer_count = 3;
+    let buffer_size: usize = 1 << 14;
+
+    struct ReadCommand<T> {
+        vector: VecDeque<T>,
+        response_sender: Sender<VecDeque<T>>,
+        iter_id: usize,
+    }
+
+    let (request_queue_sender, request_queue_receiver) = unbounded();
+
+    let mut output_iters = Vec::new();
+
+    for iter_id in 0..iters.len() {
+        let (tx, rx) = bounded::<VecDeque<T>>(buffer_count);
+
+        let sender = request_queue_sender.clone();
+
+        for _ in 0..buffer_count {
+            sender
+                .send(ReadCommand {
+                    vector: VecDeque::with_capacity(buffer_size),
+                    response_sender: tx.clone(),
+                    iter_id: iter_id,
+                })
+                .ok();
+        }
+
+        output_iters.push(GenIter(move || {
+            for mut received in rx.into_iter() {
+                if received.len() == 0 {
+                    break;
+                }
+
+                while let Some(item) = received.pop_front() {
+                    yield item;
+                }
+
+                sender
+                    .send(ReadCommand {
+                        vector: received,
+                        response_sender: tx.clone(),
+                        iter_id: iter_id,
+                    })
+                    .ok();
+            }
+        }));
+    }
+
+    thread::spawn(move || {
+        struct IterEnded<I> {
+            iter: I,
+            ended: bool,
+        }
+        let iters = to_vec(iters.into_iter().map(|i| {
+            Arc::new(RwLock::new(IterEnded {
+                iter: i,
+                ended: false,
+            }))
+        }));
+        for req in request_queue_receiver.into_iter() {
+            let iter = iters[req.iter_id].clone();
+            rayon::spawn_fifo(move || {
+                let mut iter = iter.write().unwrap();
+                let mut vector = req.vector;
+                if !iter.ended {
+                    for _ in 0..buffer_size {
+                        match iter.iter.next() {
+                            Some(item) => vector.push_back(item),
+                            None => {
+                                iter.ended = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                req.response_sender.send(vector).ok();
+            });
+        }
+    });
+
+    output_iters
 }
