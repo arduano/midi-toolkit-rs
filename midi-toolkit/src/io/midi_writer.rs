@@ -60,27 +60,9 @@ fn flush_track(writer: &mut Box<dyn WriteSeek>, mut output: QueuedOutput) -> Res
     Ok(())
 }
 
-macro_rules! midi_error {
-    ($val:expr) => {
-        match $val {
-            Ok(e) => Ok(e),
-            Err(e) => Err(MIDIWriteError::FilesystemError(e)),
-        }
-    };
-}
-
-macro_rules! midi_error_discard {
-    ($val:expr) => {
-        match $val {
-            Ok(_) => Ok(()),
-            Err(e) => Err(MIDIWriteError::FilesystemError(e)),
-        }
-    };
-}
-
 impl MIDIWriter {
     pub fn new(filename: &str, ppq: u16) -> Result<MIDIWriter, MIDIWriteError> {
-        let reader = midi_error!(File::create(filename))?;
+        let reader = File::create(filename)?;
         MIDIWriter::new_from_stram(Box::new(reader), ppq)
     }
 
@@ -88,12 +70,12 @@ impl MIDIWriter {
         mut output: Box<dyn WriteSeek>,
         ppq: u16,
     ) -> Result<MIDIWriter, MIDIWriteError> {
-        midi_error!(output.seek(SeekFrom::Start(0)))?;
-        midi_error!(output.write("MThd".as_bytes()))?;
-        midi_error!(output.write(&encode_u32(6)))?;
-        midi_error!(output.write(&encode_u16(1)))?;
-        midi_error!(output.write(&encode_u16(0)))?;
-        midi_error!(output.write(&encode_u16(ppq)))?;
+        output.seek(SeekFrom::Start(0))?;
+        output.write("MThd".as_bytes())?;
+        output.write(&encode_u32(6))?;
+        output.write(&encode_u16(1))?;
+        output.write(&encode_u16(0))?;
+        output.write(&encode_u16(ppq))?;
 
         Ok(MIDIWriter {
             output: Some(Mutex::new(output)),
@@ -123,15 +105,15 @@ impl MIDIWriter {
     }
 
     pub fn write_ppq(&self, ppq: u16) -> Result<(), MIDIWriteError> {
-        midi_error!(self.write_u16_at(12, ppq))
+        Ok(self.write_u16_at(12, ppq)?)
     }
 
     pub fn write_format(&self, ppq: u16) -> Result<(), MIDIWriteError> {
-        midi_error!(self.write_u16_at(8, ppq))
+        Ok(self.write_u16_at(8, ppq)?)
     }
 
     fn write_ntrks(&self, ppq: u16) -> Result<(), MIDIWriteError> {
-        midi_error!(self.write_u16_at(10, ppq))
+        Ok(self.write_u16_at(10, ppq)?)
     }
 
     pub fn open_next_track<'a>(&'a self) -> TrackWriter<'a> {
@@ -207,8 +189,8 @@ impl<'a> TrackWriter<'a> {
             None => panic!(".end() was called more than once on TrackWriter"),
         };
 
-        let length = midi_error!(writer.stream_position())? as u32;
-        midi_error!(writer.seek(SeekFrom::Start(0)))?;
+        let length = writer.stream_position()? as u32;
+        writer.seek(SeekFrom::Start(0))?;
 
         status.queued_writes.insert(
             self.track_id,
@@ -225,7 +207,7 @@ impl<'a> TrackWriter<'a> {
                 match status.queued_writes.remove_entry(&next_write_track) {
                     None => break,
                     Some(output) => {
-                        midi_error!(flush_track(&mut writer, output.1))?;
+                        flush_track(&mut writer, output.1)?;
                         status.next_write_track += 1;
                     }
                 }
@@ -248,7 +230,7 @@ impl<'a> TrackWriter<'a> {
     pub fn write_event<T: SerializeEventWithDelta>(
         &mut self,
         event: T,
-    ) -> Result<(), MIDIWriteError> {
+    ) -> Result<usize, MIDIWriteError> {
         let writer = self.get_writer_mut();
         event.serialize_event_with_delta(writer)
     }
@@ -256,16 +238,17 @@ impl<'a> TrackWriter<'a> {
     pub fn write_events_iter<T: SerializeEventWithDelta>(
         &mut self,
         events: impl Iterator<Item = T>,
-    ) -> Result<(), MIDIWriteError> {
+    ) -> Result<usize, MIDIWriteError> {
+        let mut count = 0;
         for event in events {
-            self.write_event(event)?;
+            count += self.write_event(event)?;
         }
-        Ok(())
+        Ok(count)
     }
 
-    pub fn write_bytes(&mut self, bytes: &[u8]) -> Result<(), MIDIWriteError> {
+    pub fn write_bytes(&mut self, bytes: &[u8]) -> Result<usize, MIDIWriteError> {
         let writer = self.get_writer_mut();
-        midi_error_discard!(writer.write(bytes))
+        Ok(writer.write(bytes)?)
     }
 }
 

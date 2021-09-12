@@ -1,5 +1,5 @@
 use super::events::*;
-use super::{CastEventDelta, ChannelEvent, KeyEvent, PlaybackEvent, MIDIEvent, SerializeEvent};
+use super::{CastEventDelta, ChannelEvent, KeyEvent, MIDIEvent, PlaybackEvent, SerializeEvent};
 use crate::io::MIDIWriteError;
 use crate::num::{MIDINum, MIDINumInto};
 use derive::EventImpl;

@@ -101,32 +101,10 @@ impl BufferReadProvider {
     }
 }
 
-macro_rules! midi_error {
-    ($val:expr) => {
-        match $val {
-            Ok(e) => Ok(e),
-            Err(e) => Err(MIDILoadError::FilesystemError(e)),
-        }
-    };
-}
-
-macro_rules! midi_parse_error {
-    ($val:expr) => {
-        match $val {
-            Ok(e) => Ok(e),
-            Err(e) => Err(MIDIParseError::FilesystemError(e)),
-        }
-    };
-}
-
 fn get_reader_len<T: ReadSeek>(reader: &mut T) -> Result<u64, MIDILoadError> {
-    let mut get = || {
-        let pos = reader.seek(SeekFrom::End(0))?;
-        reader.seek(SeekFrom::Start(0))?;
-        return Ok(pos);
-    };
-
-    midi_error!(get())
+    let pos = reader.seek(SeekFrom::End(0))?;
+    reader.seek(SeekFrom::Start(0))?;
+    Ok(pos)
 }
 
 impl DiskReader {
@@ -160,7 +138,7 @@ impl RAMReader {
                 }
 
                 let mut bytes = vec![0; length as usize];
-                midi_error!(reader.read(&mut bytes))?;
+                reader.read(&mut bytes)?;
                 Ok(RAMReader {
                     bytes: Arc::new(bytes),
                     pos: 0,
@@ -198,7 +176,7 @@ impl MIDIReader<DiskTrackReader> for DiskReader {
     }
 
     fn read_bytes_to(&self, pos: u64, bytes: Vec<u8>) -> Result<Vec<u8>, MIDILoadError> {
-        midi_error!(self.reader.read_sync(bytes, pos))
+        Ok(self.reader.read_sync(bytes, pos)?)
     }
 
     fn len(&self) -> u64 {
@@ -319,7 +297,10 @@ impl DiskTrackReader {
 
     fn receive_next_buffer(&mut self) -> Option<Result<Vec<u8>, MIDIParseError>> {
         match self.receiver.recv() {
-            Ok(v) => Some(midi_parse_error!(v)),
+            Ok(v) => match v {
+                Ok(v) => Some(Ok(v)),
+                Err(e) => Some(Err(e.into())),
+            },
             Err(_) => None,
         }
     }

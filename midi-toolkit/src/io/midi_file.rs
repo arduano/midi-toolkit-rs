@@ -43,15 +43,6 @@ pub struct MIDIFileParser<T: MIDIReader<R>, R: TrackReader> {
     _t: PhantomData<R>,
 }
 
-macro_rules! midi_error {
-    ($val:expr) => {
-        match $val {
-            Ok(e) => Ok(e),
-            Err(e) => Err(MIDILoadError::FilesystemError(e)),
-        }
-    };
-}
-
 impl<T: 'static + MIDIReader<R>, R: 'static + TrackReader> MIDIFileParser<T, R> {
     fn new_from_disk_reader(
         reader: T,
@@ -198,7 +189,7 @@ impl MIDIFile {
         filename: &str,
         read_progress: Option<&mut dyn FnMut(u32)>,
     ) -> Result<MIDIFileParser<DiskReader, DiskTrackReader>, MIDILoadError> {
-        let reader = midi_error!(File::open(filename))?;
+        let reader = File::open(filename)?;
         let reader = DiskReader::new(reader)?;
 
         MIDIFileParser::new_from_disk_reader(reader, read_progress)
@@ -208,7 +199,7 @@ impl MIDIFile {
         filename: &str,
         read_progress: Option<&mut dyn FnMut(u32)>,
     ) -> Result<MIDIFileParser<RAMReader, FullRamTrackReader>, MIDILoadError> {
-        let reader = midi_error!(File::open(filename))?;
+        let reader = File::open(filename)?;
         let reader = RAMReader::new(reader)?;
 
         MIDIFileParser::new_from_disk_reader(reader, read_progress)

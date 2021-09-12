@@ -702,7 +702,7 @@ pub fn event_impl(input: TokenStream) -> TokenStream {
 
             impl<D: MIDINum> SerializeEvent for Event<D> {
                 #[inline(always)]
-                fn serialize_event<T: Write>(&self, buf: &mut T) -> Result<(), MIDIWriteError> {
+                fn serialize_event<T: Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
                     #serialize_event
                 }
             }

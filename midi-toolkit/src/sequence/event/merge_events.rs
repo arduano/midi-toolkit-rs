@@ -225,16 +225,15 @@ pub fn grouped_multithreaded_merge_arrays<
         iterator_groups[i].push(iter);
     }
 
-    let mut iterator_groups =
-        pipe!(
-            iterator_groups.into_iter()
-            .map(|g| pipe!(
-                g
-                |>merge_events_array()
-                |>threaded_buffer(buffer_size)
-            ))
-            |>to_vec()
-        );
+    let mut iterator_groups = pipe!(
+        iterator_groups.into_iter()
+        .map(|g| pipe!(
+            g
+            |>merge_events_array()
+            |>threaded_buffer(buffer_size)
+        ))
+        |>to_vec()
+    );
 
     let mut new_groups = Vec::new();
     while iterator_groups.len() > 1 {

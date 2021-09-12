@@ -1,7 +1,17 @@
 #![feature(generators)]
 
 use gen_iter::GenIter;
-use midi_toolkit::{io::{MIDIFile, MIDIWriter}, notes::{MIDINote, Note}, pipe, sequence::{event::{filter_non_note_events, merge_events}, events_to_notes, note::merge_notes_iterator, notes_to_events, to_vec_result, unwrap_items, wrap_ok}};
+use midi_toolkit::{
+    io::{MIDIFile, MIDIWriter},
+    notes::{MIDINote, Note},
+    pipe,
+    sequence::{
+        event::{filter_non_note_events, merge_events},
+        events_to_notes,
+        note::merge_notes_iterator,
+        notes_to_events, to_vec_result, unwrap_items, wrap_ok,
+    },
+};
 
 fn chop_note(note: Note<u64>, chop_size: u64) -> impl Iterator<Item = Note<u64>> {
     GenIter(move || {

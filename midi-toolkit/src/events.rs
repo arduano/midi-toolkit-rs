@@ -26,25 +26,14 @@ pub fn encode_var_length_value(mut val: u64) -> Vec<u8> {
     vec
 }
 
-macro_rules! midi_error {
-    ($val:expr) => {
-        match $val {
-            Ok(_) => Ok(()),
-            Err(e) => Err(MIDIWriteError::FilesystemError(e)),
-        }
-    };
-}
-
 pub trait SerializeEvent {
-    fn serialize_event<T: Write>(&self, buf: &mut T) -> Result<(), MIDIWriteError>;
+    fn serialize_event<T: Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError>;
 }
 
 pub trait SerializeEventWithDelta: SerializeEvent {
-    fn serialize_delta<T: Write>(&self, buf: &mut T) -> Result<(), MIDIWriteError>;
-    fn serialize_event_with_delta<T: Write>(&self, buf: &mut T) -> Result<(), MIDIWriteError> {
-        self.serialize_delta(buf)?;
-        self.serialize_event(buf)?;
-        Ok(())
+    fn serialize_delta<T: Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError>;
+    fn serialize_event_with_delta<T: Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
+        Ok(self.serialize_delta(buf)? + self.serialize_event(buf)?)
     }
 }
 
@@ -77,10 +66,10 @@ pub trait MIDIEventEnum<T: MIDINum>: MIDIEvent<T> {
 }
 
 impl<E: MIDIEvent<u64>> SerializeEventWithDelta for E {
-    fn serialize_delta<T: Write>(&self, buf: &mut T) -> Result<(), MIDIWriteError> {
+    fn serialize_delta<T: Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let delta = self.delta();
         let vec = encode_var_length_value(delta);
-        midi_error!(buf.write(&vec))
+        Ok(buf.write(&vec)?)
     }
 }
 
