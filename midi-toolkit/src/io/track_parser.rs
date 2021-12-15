@@ -72,13 +72,13 @@ impl<T: TrackReader> Iterator for TrackParser<T> {
 
         macro_rules! ret {
             ($val:expr) => {
-                Some(Ok($val));
+                Some(Ok($val))
             };
         }
 
         macro_rules! err {
             ($val:expr) => {
-                Some(Err($val));
+                Some(Err($val))
             };
         }
 

@@ -108,9 +108,8 @@ impl<T: 'static + MIDIReader<R>, R: 'static + TrackReader> MIDIFile<T, R> {
             track_positions.push(TrackPos { len, pos });
             pos += len as u64;
 
-            if let Some(progress) = read_progress.take() {
+            if let Some(progress) = read_progress.as_mut().take() {
                 progress(track_count);
-                read_progress.insert(progress);
             }
         }
 

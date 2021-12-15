@@ -34,7 +34,7 @@ pub struct ReadCommand {
 
 #[derive(Debug)]
 pub struct BufferReadProvider {
-    thread: JoinHandle<()>,
+    _thread: JoinHandle<()>,
     send: Sender<ReadCommand>,
 }
 
@@ -70,7 +70,7 @@ impl BufferReadProvider {
 
         BufferReadProvider {
             send: snd,
-            thread: handle,
+            _thread: handle,
         }
     }
 
