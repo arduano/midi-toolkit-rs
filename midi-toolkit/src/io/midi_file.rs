@@ -9,7 +9,7 @@ use crate::{
     pipe,
     sequence::{
         channels_into_threadpool,
-        event::{grouped_multithreaded_merge_arrays, merge_events_array},
+        event::{grouped_multithreaded_merge_event_arrays, merge_events_array},
         to_vec,
     },
 };
@@ -155,7 +155,7 @@ impl<T: 'static + MIDIReader<R>, R: 'static + TrackReader> MIDIFile<T, R> {
             self.iter_all_tracks()
             |>to_vec()
             |>channels_into_threadpool()
-            |>grouped_multithreaded_merge_arrays()
+            |>grouped_multithreaded_merge_event_arrays()
         )
     }
 

@@ -2,7 +2,6 @@ use crate::events::*;
 
 use super::{errors::MIDIParseError, readers::TrackReader};
 
-/// test [`midi_toolkit::events::NoteOnEvent`]
 pub struct TrackParser<T: TrackReader> {
     reader: T,
     pushback: i16,
@@ -10,7 +9,35 @@ pub struct TrackParser<T: TrackReader> {
     ended: bool,
 }
 
+pub struct ParserCheckpoint {
+    pushback: i16,
+    prev_command: u8,
+    reader_pos: u64,
+    ended: bool,
+}
+
+impl ParserCheckpoint {
+    pub fn reader_pos(&self) -> u64 {
+        self.reader_pos
+    }
+}
+
 impl<T: TrackReader> TrackParser<T> {
+    pub fn from_checkpoint(reader: T, checkpoint: ParserCheckpoint) -> Self {
+        assert_eq!(
+            checkpoint.reader_pos,
+            reader.pos(),
+            "Checkpoint reader pos does not match reader pos"
+        );
+
+        Self {
+            reader,
+            pushback: checkpoint.pushback,
+            prev_command: checkpoint.prev_command,
+            ended: checkpoint.ended,
+        }
+    }
+
     pub fn new(reader: T) -> Self {
         Self {
             reader,

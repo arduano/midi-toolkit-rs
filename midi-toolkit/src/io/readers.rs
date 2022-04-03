@@ -213,16 +213,18 @@ impl MIDIReader<FullRamTrackReader> for RAMReader {
 
 pub trait TrackReader: Send + Sync {
     fn read(&mut self) -> Result<u8, MIDIParseError>;
+    fn pos(&self) -> u64;
 }
 
 pub struct DiskTrackReader {
     reader: Arc<BufferReadProvider>,
+    start: u64,                  // Relative to midi
     pos: u64,                    // Relative to midi
     len: u64,                    //
     buffer: Option<Vec<u8>>,     //
-    buffer_start: u64,           // Relative to pos
+    buffer_start: u64,           // Relative to start
     buffer_pos: usize,           // Relative buffer start
-    unrequested_data_start: u64, // Relative to pos
+    unrequested_data_start: u64, // Relative to start
 
     receiver: DelayedReceiver<Result<Vec<u8>, io::Error>>,
     receiver_sender: Option<Arc<Sender<Result<Vec<u8>, io::Error>>>>, // Becomes None when there's nothing left to read
@@ -258,6 +260,11 @@ impl TrackReader for FullRamTrackReader {
         let b = self.bytes[self.pos];
         self.pos += 1;
         Ok(b)
+    }
+
+    #[inline(always)]
+    fn pos(&self) -> u64 {
+        self.pos as u64
     }
 }
 
@@ -313,7 +320,41 @@ impl DiskTrackReader {
 
         let mut reader = DiskTrackReader {
             reader: reader,
+            start: start,
             pos: start,
+            len: len as u64,
+            buffer: None,
+            buffer_start: 0,
+            buffer_pos: 0,
+            unrequested_data_start: 0,
+            receiver: DelayedReceiver::new(receive),
+            receiver_sender: Some(send),
+        };
+
+        for _ in 0..buffer_count {
+            reader.send_next_read(None);
+        }
+
+        reader.receiver.wait_first();
+
+        reader
+    }
+
+    pub fn new_with_pos(
+        reader: Arc<BufferReadProvider>,
+        start: u64,
+        len: u64,
+        pos: u64,
+    ) -> DiskTrackReader {
+        let buffer_count = 3;
+
+        let (send, receive) = unbounded();
+        let send = Arc::new(send);
+
+        let mut reader = DiskTrackReader {
+            reader: reader,
+            start: start,
+            pos: start + pos,
             len: len as u64,
             buffer: None,
             buffer_start: 0,
@@ -334,7 +375,6 @@ impl DiskTrackReader {
 }
 
 impl TrackReader for DiskTrackReader {
-    #[inline(always)]
     fn read(&mut self) -> Result<u8, MIDIParseError> {
         match self.buffer {
             None => {
@@ -359,5 +399,10 @@ impl TrackReader for DiskTrackReader {
         }
 
         Ok(byte)
+    }
+
+    #[inline(always)]
+    fn pos(&self) -> u64 {
+        self.pos - self.start
     }
 }
