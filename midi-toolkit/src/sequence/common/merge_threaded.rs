@@ -1,4 +1,3 @@
-
 #[macro_export]
 macro_rules! grouped_multithreaded_merge {
     ($array:ident, $fn_2:ident, $fn_arr:ident) => {

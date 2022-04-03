@@ -1,5 +1,3 @@
-use std::iter;
-
 use gen_iter::GenIter;
 
 use crate::{
