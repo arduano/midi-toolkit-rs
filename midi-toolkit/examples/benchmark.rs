@@ -57,14 +57,6 @@ fn main() {
             for _ in pipe!(track) {}
         }
     });
-    do_run(
-        "Multithreaded merge all tracks together while parsing",
-        repeats,
-        || {
-            let merged = pipe!(file.iter_all_events_merged_multithreaded());
-            for _ in merged {}
-        },
-    );
     do_run("Merge all tracks together while parsing", repeats, || {
         let merged = pipe!(file.iter_all_tracks()|>to_vec()|>merge_events_array());
         for _ in merged {}

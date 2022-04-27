@@ -86,9 +86,9 @@ pub fn channels_into_threadpool<
     I: 'static + Iterator<Item = T> + Sized + Send + Sync,
 >(
     iters: Vec<I>,
+    buffer_size: usize,
 ) -> Vec<impl Iterator<Item = T> + Sync + Send> {
     let buffer_count = 3;
-    let buffer_size: usize = 1 << 14;
 
     struct ReadCommand<T> {
         vector: VecDeque<T>,

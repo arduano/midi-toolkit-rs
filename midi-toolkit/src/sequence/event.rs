@@ -10,3 +10,5 @@ mod filter_events;
 pub use filter_events::*;
 mod stats;
 pub use stats::*;
+mod batched;
+pub use batched::*;

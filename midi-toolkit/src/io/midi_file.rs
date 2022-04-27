@@ -4,14 +4,20 @@ use std::{
     marker::PhantomData,
 };
 
+use gen_iter::GenIter;
+
 use crate::{
     events::Event,
     pipe,
     sequence::{
         channels_into_threadpool,
-        event::{grouped_multithreaded_merge_event_arrays, merge_events_array},
+        event::{
+            convert_events_into_batches, grouped_multithreaded_merge_event_arrays,
+            merge_events_array, EventBatch,
+        },
         to_vec,
     },
+    unwrap,
 };
 use std::fmt::Debug;
 
@@ -141,22 +147,27 @@ impl<T: 'static + MIDIReader<R>, R: 'static + TrackReader> MIDIFile<T, R> {
     pub fn iter_all_events_merged(
         &self,
     ) -> impl Iterator<Item = Result<Event<u64>, MIDIParseError>> {
-        pipe!(
-            self.iter_all_tracks()
-            |>to_vec()
-            |>merge_events_array()
-        )
+        let merged_batches = self.iter_all_events_merged_batches();
+        GenIter(move || {
+            for batch in merged_batches {
+                let batch = unwrap!(batch);
+                for event in batch.into_iter() {
+                    yield Ok(event);
+                }
+            }
+        })
     }
 
-    pub fn iter_all_events_merged_multithreaded(
+    pub fn iter_all_events_merged_batches(
         &self,
-    ) -> impl Iterator<Item = Result<Event<u64>, MIDIParseError>> {
-        pipe!(
-            self.iter_all_tracks()
-            |>to_vec()
-            |>channels_into_threadpool()
-            |>grouped_multithreaded_merge_event_arrays()
-        )
+    ) -> impl Iterator<Item = Result<EventBatch<u64, Event<u64>>, MIDIParseError>> {
+        let batched_tracks = self
+            .iter_all_tracks()
+            .map(convert_events_into_batches)
+            .collect();
+        let batched_tracks_threaded = channels_into_threadpool(batched_tracks, 10);
+        let merged_batches = merge_events_array(batched_tracks_threaded);
+        merged_batches
     }
 
     pub fn iter_track(
