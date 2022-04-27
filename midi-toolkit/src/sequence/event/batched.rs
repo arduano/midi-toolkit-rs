@@ -109,3 +109,16 @@ pub fn convert_events_into_batches<D: MIDINum, E: MIDIEvent<D>, Err>(
         }
     })
 }
+
+pub fn flatten_batches_to_events<D: MIDINum, E: MIDIEvent<D>, Err>(
+    iter: impl Iterator<Item = Result<EventBatch<D, E>, Err>>,
+) -> impl Iterator<Item = Result<E, Err>> {
+    GenIter(move || {
+        for batch in iter {
+            let batch = unwrap!(batch);
+            for event in batch.into_iter() {
+                yield Ok(event);
+            }
+        }
+    })
+}

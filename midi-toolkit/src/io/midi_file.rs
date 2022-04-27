@@ -4,15 +4,14 @@ use std::{
     marker::PhantomData,
 };
 
-use gen_iter::GenIter;
-
 use crate::{
     events::Event,
     sequence::{
         channels_into_threadpool,
-        event::{convert_events_into_batches, merge_events_array, EventBatch},
+        event::{
+            convert_events_into_batches, flatten_batches_to_events, merge_events_array, EventBatch,
+        },
     },
-    unwrap,
 };
 use std::fmt::Debug;
 
@@ -143,14 +142,7 @@ impl<T: 'static + MIDIReader<R>, R: 'static + TrackReader> MIDIFile<T, R> {
         &self,
     ) -> impl Iterator<Item = Result<Event<u64>, MIDIParseError>> {
         let merged_batches = self.iter_all_events_merged_batches();
-        GenIter(move || {
-            for batch in merged_batches {
-                let batch = unwrap!(batch);
-                for event in batch.into_iter() {
-                    yield Ok(event);
-                }
-            }
-        })
+        flatten_batches_to_events(merged_batches)
     }
 
     pub fn iter_all_events_merged_batches(
