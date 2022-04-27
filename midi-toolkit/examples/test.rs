@@ -5,7 +5,7 @@ use midi_toolkit::{
     io::MIDIFile,
     num::MIDINum,
     pipe,
-    sequence::{event::merge_events_array, to_vec, unwrap_items},
+    sequence::unwrap_items,
 };
 
 pub fn boxed<

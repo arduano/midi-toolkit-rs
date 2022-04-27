@@ -2,7 +2,12 @@ use std::marker::PhantomData;
 
 use gen_iter::GenIter;
 
-use crate::{num::MIDINum, events::{MIDIEvent, SerializeEvent, KeyEvent, ChannelEvent, PlaybackEvent}, io::MIDIWriteError, unwrap};
+use crate::{
+    events::{ChannelEvent, KeyEvent, MIDIEvent, PlaybackEvent, SerializeEvent},
+    io::MIDIWriteError,
+    num::MIDINum,
+    unwrap,
+};
 
 #[derive(Debug)]
 pub struct EventBatch<D: MIDINum, T: MIDIEvent<D>> {
@@ -28,10 +33,7 @@ impl<D: MIDINum, T: MIDIEvent<D>> EventBatch<D, T> {
 }
 
 impl<D: MIDINum, T: MIDIEvent<D>> SerializeEvent for EventBatch<D, T> {
-    fn serialize_event<W: std::io::Write>(
-        &self,
-        _buf: &mut W,
-    ) -> Result<usize, MIDIWriteError> {
+    fn serialize_event<W: std::io::Write>(&self, _buf: &mut W) -> Result<usize, MIDIWriteError> {
         let mut written = 0;
         for event in self.iter() {
             written += event.serialize_event(_buf)?;
@@ -61,9 +63,7 @@ impl<D: MIDINum, T: MIDIEvent<D>> MIDIEvent<D> for EventBatch<D, T> {
         None
     }
 
-    fn as_key_event_mut<'a>(
-        &'a mut self,
-    ) -> Option<Box<&'a mut dyn KeyEvent>> {
+    fn as_key_event_mut<'a>(&'a mut self) -> Option<Box<&'a mut dyn KeyEvent>> {
         None
     }
 
@@ -79,9 +79,7 @@ impl<D: MIDINum, T: MIDIEvent<D>> MIDIEvent<D> for EventBatch<D, T> {
         None
     }
 
-    fn as_channel_event_mut<'a>(
-        &'a mut self,
-    ) -> Option<Box<&'a mut dyn ChannelEvent>> {
+    fn as_channel_event_mut<'a>(&'a mut self) -> Option<Box<&'a mut dyn ChannelEvent>> {
         None
     }
 

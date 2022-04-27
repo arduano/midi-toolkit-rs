@@ -8,14 +8,9 @@ use gen_iter::GenIter;
 
 use crate::{
     events::Event,
-    pipe,
     sequence::{
         channels_into_threadpool,
-        event::{
-            convert_events_into_batches, grouped_multithreaded_merge_event_arrays,
-            merge_events_array, EventBatch,
-        },
-        to_vec,
+        event::{convert_events_into_batches, merge_events_array, EventBatch},
     },
     unwrap,
 };
