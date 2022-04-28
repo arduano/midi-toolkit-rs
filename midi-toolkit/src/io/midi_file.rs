@@ -9,7 +9,9 @@ use crate::{
     sequence::{
         channels_into_threadpool,
         event::{
-            convert_events_into_batches, flatten_batches_to_events, merge_events_array, EventBatch,
+            convert_events_into_batches, flatten_batches_to_events,
+            flatten_track_batches_to_events, into_track_events, merge_events_array, EventBatch,
+            TrackEvent,
         },
     },
 };
@@ -145,12 +147,34 @@ impl<T: 'static + MIDIReader<R>, R: 'static + TrackReader> MIDIFile<T, R> {
         flatten_batches_to_events(merged_batches)
     }
 
+    pub fn iter_all_track_events_merged(
+        &self,
+    ) -> impl Iterator<Item = Result<TrackEvent<u64, Event<u64>>, MIDIParseError>> {
+        let merged_batches = self.iter_all_track_events_merged_batches();
+        flatten_track_batches_to_events(merged_batches)
+    }
+
     pub fn iter_all_events_merged_batches(
         &self,
     ) -> impl Iterator<Item = Result<EventBatch<u64, Event<u64>>, MIDIParseError>> {
         let batched_tracks = self
             .iter_all_tracks()
             .map(convert_events_into_batches)
+            .collect();
+        let batched_tracks_threaded = channels_into_threadpool(batched_tracks, 10);
+        let merged_batches = merge_events_array(batched_tracks_threaded);
+        merged_batches
+    }
+
+    pub fn iter_all_track_events_merged_batches(
+        &self,
+    ) -> impl Iterator<Item = Result<TrackEvent<u64, EventBatch<u64, Event<u64>>>, MIDIParseError>>
+    {
+        let batched_tracks = self
+            .iter_all_tracks()
+            .map(convert_events_into_batches)
+            .enumerate()
+            .map(|(i, track)| into_track_events(track, i as u32))
             .collect();
         let batched_tracks_threaded = channels_into_threadpool(batched_tracks, 10);
         let merged_batches = merge_events_array(batched_tracks_threaded);

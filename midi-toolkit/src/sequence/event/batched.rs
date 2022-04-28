@@ -9,6 +9,8 @@ use crate::{
     unwrap,
 };
 
+use super::TrackEvent;
+
 #[derive(Debug)]
 pub struct EventBatch<D: MIDINum, T: MIDIEvent<D>> {
     events: Vec<T>,
@@ -118,6 +120,20 @@ pub fn flatten_batches_to_events<D: MIDINum, E: MIDIEvent<D>, Err>(
             let batch = unwrap!(batch);
             for event in batch.into_iter() {
                 yield Ok(event);
+            }
+        }
+    })
+}
+
+pub fn flatten_track_batches_to_events<D: MIDINum, E: MIDIEvent<D>, Err>(
+    iter: impl Iterator<Item = Result<TrackEvent<D, EventBatch<D, E>>, Err>>,
+) -> impl Iterator<Item = Result<TrackEvent<D, E>, Err>> {
+    GenIter(move || {
+        for batch in iter {
+            let batch = unwrap!(batch);
+            let track = batch.track;
+            for event in batch.into().into_iter() {
+                yield Ok(TrackEvent::new(event, track));
             }
         }
     })
