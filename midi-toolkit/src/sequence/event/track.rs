@@ -1,12 +1,12 @@
 use std::marker::PhantomData;
 
 use crate::{
-    events::{ChannelEvent, KeyEvent, MIDIEvent, PlaybackEvent, SerializeEvent},
+    events::{CastEventDelta, ChannelEvent, KeyEvent, MIDIEvent, PlaybackEvent, SerializeEvent},
     io::MIDIWriteError,
-    num::MIDINum,
+    num::{MIDINum, MIDINumInto},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TrackEvent<D: MIDINum, T: MIDIEvent<D>> {
     event: T,
     pub track: u32,
@@ -94,6 +94,17 @@ impl<D: MIDINum, T: MIDIEvent<D>> MIDIEvent<D> for TrackEvent<D, T> {
 
     fn as_playback_event<'a>(&'a self) -> Option<Box<&'a dyn PlaybackEvent>> {
         self.event.as_playback_event()
+    }
+}
+
+impl<TT, DT: MIDINum, ETT: MIDIEvent<TT> + CastEventDelta<DT, EDT> + Clone, EDT: MIDIEvent<DT>>
+    CastEventDelta<DT, TrackEvent<DT, EDT>> for TrackEvent<TT, ETT>
+where
+    TT: MIDINum + MIDINumInto<DT>,
+{
+    #[inline(always)]
+    fn cast_delta(&self) -> TrackEvent<DT, EDT> {
+        TrackEvent::new(self.event.cast_delta(), self.track)
     }
 }
 
