@@ -32,6 +32,10 @@ impl<D: MIDINum, T: MIDIEvent<D>> EventBatch<D, T> {
     pub fn iter(&self) -> impl Iterator<Item = &T> {
         self.events.iter()
     }
+
+    pub fn count(&self) -> usize {
+        self.events.len()
+    }
 }
 
 impl<D: MIDINum, T: MIDIEvent<D>> SerializeEvent for EventBatch<D, T> {
