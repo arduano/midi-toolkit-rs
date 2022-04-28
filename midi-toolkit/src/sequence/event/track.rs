@@ -1,7 +1,10 @@
 use std::marker::PhantomData;
 
 use crate::{
-    events::{CastEventDelta, ChannelEvent, KeyEvent, MIDIEvent, PlaybackEvent, SerializeEvent},
+    events::{
+        CastEventDelta, ChannelEvent, KeyEvent, MIDIEvent, MIDIEventEnum, PlaybackEvent,
+        SerializeEvent,
+    },
     io::MIDIWriteError,
     num::{MIDINum, MIDINumInto},
 };
@@ -105,6 +108,16 @@ where
     #[inline(always)]
     fn cast_delta(&self) -> TrackEvent<DT, EDT> {
         TrackEvent::new(self.event.cast_delta(), self.track)
+    }
+}
+
+impl<T: MIDINum, E: MIDIEventEnum<T>> MIDIEventEnum<T> for TrackEvent<T, E> {
+    fn as_event(&self) -> &crate::events::Event<T> {
+        self.event.as_event()
+    }
+
+    fn as_event_mut(&mut self) -> &mut crate::events::Event<T> {
+        self.event.as_event_mut()
     }
 }
 

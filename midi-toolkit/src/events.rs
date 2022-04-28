@@ -62,7 +62,7 @@ pub trait MIDIEvent<T: MIDINum>: SerializeEvent + std::fmt::Debug {
 
 pub trait MIDIEventEnum<T: MIDINum>: MIDIEvent<T> {
     fn as_event(&self) -> &Event<T>;
-    fn as_event_mut(&mut self) -> &Event<T>;
+    fn as_event_mut(&mut self) -> &mut Event<T>;
 }
 
 impl<E: MIDIEvent<u64>> SerializeEventWithDelta for E {
@@ -78,7 +78,7 @@ impl<T: MIDINum> MIDIEventEnum<T> for Event<T> {
         self
     }
 
-    fn as_event_mut(&mut self) -> &Event<T> {
+    fn as_event_mut(&mut self) -> &mut Event<T> {
         self
     }
 }
