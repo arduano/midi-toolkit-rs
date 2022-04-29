@@ -113,6 +113,9 @@ pub fn convert_events_into_batches<D: MIDINum, E: MIDIEvent<D>, Err>(
             }
             events.push(e);
         }
+        if events.len() > 0 {
+            yield Ok(EventBatch::new(events));
+        }
     })
 }
 
