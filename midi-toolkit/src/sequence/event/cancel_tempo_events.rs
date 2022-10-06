@@ -19,7 +19,6 @@ pub fn cancel_tempo_events<
         let zero = D::zero();
         let mut extra_ticks = zero;
         let mut tempo = D::midi_num_from(500000);
-        let mut last_diff = zero;
 
         let new_tempo = tempo * (tempo / D::midi_num_from(new_tempo));
 
@@ -29,11 +28,11 @@ pub fn cancel_tempo_events<
             extra_ticks = zero;
             if let Some(inner_tempo) = e.inner_tempo() {
                 tempo = D::midi_num_from(inner_tempo);
-                extra_ticks = e.delta() + last_diff;
-                last_diff = zero;
+                let delta = e.delta();
                 if let Some(without_tempo) = e.without_tempo() {
                     e = without_tempo;
                 } else {
+                    extra_ticks = delta;
                     continue;
                 }
             }
