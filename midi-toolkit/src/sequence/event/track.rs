@@ -8,7 +8,7 @@ use super::Delta;
 
 #[derive(Debug, Clone)]
 pub struct Track<T> {
-    event: T,
+    pub event: T,
     pub track: u32,
 }
 
@@ -22,7 +22,7 @@ impl<T> Track<T> {
     }
 }
 
-impl<T: MIDIEvent> std::ops::Deref for Track<T> {
+impl<T> std::ops::Deref for Track<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -30,13 +30,13 @@ impl<T: MIDIEvent> std::ops::Deref for Track<T> {
     }
 }
 
-impl<T: MIDIEvent> std::ops::DerefMut for Track<T> {
+impl<T> std::ops::DerefMut for Track<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.event
     }
 }
 
-impl<T: MIDIEvent> SerializeEvent for Track<T> {
+impl<T: SerializeEvent> SerializeEvent for Track<T> {
     fn serialize_event<W: std::io::Write>(&self, buf: &mut W) -> Result<usize, MIDIWriteError> {
         self.event.serialize_event(buf)
     }

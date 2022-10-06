@@ -32,9 +32,18 @@ impl<T> EventBatch<T> {
 }
 
 impl<D: MIDINum, T> Delta<D, EventBatch<T>> {
-    pub fn into_iter(self) -> impl Iterator<Item = Delta<D, T>> {
+    pub fn into_iter_events(self) -> impl Iterator<Item = Delta<D, T>> {
         let mut delta = self.delta;
         self.event.into_iter_inner().map(move |event| {
+            let event = Delta::new(delta, event);
+            delta = D::zero();
+            event
+        })
+    }
+
+    pub fn iter_events(&self) -> impl Iterator<Item = Delta<D, &T>> {
+        let mut delta = self.delta;
+        self.event.iter_inner().map(move |event| {
             let event = Delta::new(delta, event);
             delta = D::zero();
             event
@@ -54,6 +63,16 @@ impl<D: MIDINum, T> Delta<D, Track<EventBatch<T>>> {
                 delta = D::zero();
                 event
             })
+    }
+
+    pub fn iter_events(&self) -> impl Iterator<Item = Delta<D, Track<&T>>> {
+        let mut delta = self.delta;
+        let track = self.event.track;
+        self.event.event.iter_inner().map(move |event| {
+            let event = Delta::new(delta, Track::new(event, track));
+            delta = D::zero();
+            event
+        })
     }
 }
 
