@@ -1,9 +1,8 @@
 use std::time::Instant;
 
 use midi_toolkit::{
-    events::{Event, MIDIEvent, MIDIEventEnum},
+    events::{Event, MIDIEventEnum},
     io::MIDIFile,
-    num::MIDINum,
     pipe,
     sequence::unwrap_items,
 };
