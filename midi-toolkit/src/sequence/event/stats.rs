@@ -3,7 +3,7 @@ use std::{ops::Deref, sync::Arc, time::Duration};
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 
 use crate::{
-    events::{Event, MIDIDelta, MIDIEvent, MIDIEventEnum, TempoEvent},
+    events::{Event, MIDIDelta, MIDIEventEnum, TempoEvent},
     num::MIDINum,
     pipe,
     sequence::{event::merge_events_array, to_vec, to_vec_result, wrap_ok},

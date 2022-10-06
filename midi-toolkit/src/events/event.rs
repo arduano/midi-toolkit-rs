@@ -1,7 +1,7 @@
 use super::{events::*, BatchTempo};
-use super::{CastEventDelta, ChannelEvent, KeyEvent, MIDIEvent, PlaybackEvent, SerializeEvent};
+use super::{MIDIEvent, SerializeEvent};
 use crate::io::MIDIWriteError;
-use crate::num::{MIDINum, MIDINumInto};
+
 use derive::EventImpl;
 use std::io::Write;
 

@@ -1,7 +1,7 @@
 use gen_iter::GenIter;
 
 use crate::{
-    events::{MIDIDelta, MIDIEvent},
+    events::MIDIDelta,
     grouped_multithreaded_merge,
     num::MIDINum,
     pipe,

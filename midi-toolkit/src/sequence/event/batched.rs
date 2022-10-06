@@ -1,13 +1,7 @@
-use std::marker::PhantomData;
-
 use gen_iter::GenIter;
 
 use crate::{
-    events::{
-        BatchTempo, ChannelEvent, KeyEvent, MIDIDelta, MIDIEvent, MIDIEventEnum, PlaybackEvent,
-        SerializeEvent, SerializeEventWithDelta,
-    },
-    io::MIDIWriteError,
+    events::{BatchTempo, MIDIDelta, MIDIEvent, MIDIEventEnum},
     num::MIDINum,
     unwrap,
 };

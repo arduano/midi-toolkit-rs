@@ -1,7 +1,4 @@
-use crate::{
-    events::{CastEventDelta, MIDIEvent},
-    num::MIDINum,
-};
+use crate::{events::CastEventDelta, num::MIDINum};
 
 pub struct TimeCaster<DT: MIDINum>(DT);
 

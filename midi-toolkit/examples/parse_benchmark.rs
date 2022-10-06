@@ -1,18 +1,12 @@
-use std::{
-    io::Cursor,
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 
 use midi_toolkit::{
     events::{Event, MIDIEventEnum},
-    io::{MIDIFile, MIDIWriter},
+    io::MIDIFile,
     pipe,
     sequence::{
-        event::{
-            cancel_tempo_events, convert_events_into_batches, get_channels_array_statistics,
-            merge_events_array, scale_event_time,
-        },
-        to_vec, to_vec_result, unwrap_items, wrap_ok, TimeCaster,
+        event::{cancel_tempo_events, get_channels_array_statistics, scale_event_time},
+        unwrap_items, TimeCaster,
     },
 };
 

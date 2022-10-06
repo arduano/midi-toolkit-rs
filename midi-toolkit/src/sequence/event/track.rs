@@ -1,11 +1,7 @@
-use std::marker::PhantomData;
-
 use crate::{
-    events::{
-        BatchTempo, ChannelEvent, KeyEvent, MIDIEvent, MIDIEventEnum, PlaybackEvent, SerializeEvent,
-    },
+    events::{BatchTempo, MIDIEvent, MIDIEventEnum, SerializeEvent},
     io::MIDIWriteError,
-    num::{MIDINum, MIDINumInto},
+    num::MIDINum,
 };
 
 use super::Delta;

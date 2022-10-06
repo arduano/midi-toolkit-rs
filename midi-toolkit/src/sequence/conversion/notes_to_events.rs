@@ -2,13 +2,7 @@ use std::collections::VecDeque;
 
 use gen_iter::GenIter;
 
-use crate::{
-    events::{Event, MIDIEvent},
-    notes::MIDINote,
-    num::MIDINum,
-    sequence::event::Delta,
-    unwrap,
-};
+use crate::{events::Event, notes::MIDINote, num::MIDINum, sequence::event::Delta, unwrap};
 
 /// Takes a note iterator and converts it to a note event iterator.
 /// Effectively flattening the notes into an event sequence.

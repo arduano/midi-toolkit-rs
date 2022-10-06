@@ -1,9 +1,6 @@
 use std::io::Write;
 
-use crate::{
-    io::MIDIWriteError,
-    num::{MIDINum, MIDINumInto},
-};
+use crate::{io::MIDIWriteError, num::MIDINum};
 pub use event::Event;
 pub use events::*;
 

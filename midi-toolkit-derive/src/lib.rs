@@ -402,7 +402,7 @@ pub fn event_impl(input: TokenStream) -> TokenStream {
 
         let variants = variants.iter().collect::<Vec<_>>();
 
-        let clone_match = create_match(&variants, |v, mappers| {
+        let clone_match = create_match(&variants, |v, _mappers| {
             let ident = &v.ident;
             if is_boxed(v) {
                 make_match_line(

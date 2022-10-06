@@ -1,7 +1,4 @@
-use crate::{
-    events::{MIDIDelta, MIDIEvent},
-    num::MIDINum,
-};
+use crate::{events::MIDIDelta, num::MIDINum};
 
 /// Scale each delta time of an event sequence.
 ///

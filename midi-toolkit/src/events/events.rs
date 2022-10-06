@@ -3,10 +3,7 @@ use crate::io::MIDIWriteError;
 use crate::sequence::event::Delta;
 
 use super::event::Event;
-use super::{
-    CastEventDelta, ChannelEvent, KeyEvent, MIDIEvent, MIDINum, MIDINumInto, PlaybackEvent,
-    SerializeEvent,
-};
+use super::{ChannelEvent, KeyEvent, MIDIEvent, MIDINum, PlaybackEvent, SerializeEvent};
 use derive::{MIDIEvent, NewEvent};
 
 #[derive(Debug, Clone, Copy, PartialEq)]

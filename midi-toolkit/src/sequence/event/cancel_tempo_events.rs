@@ -1,7 +1,7 @@
 use gen_iter::GenIter;
 
 use crate::{
-    events::{BatchTempo, Event, MIDIDelta, MIDIEvent, MIDIEventEnum},
+    events::{BatchTempo, MIDIDelta},
     num::MIDINum,
     unwrap,
 };
