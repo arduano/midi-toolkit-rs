@@ -6,32 +6,28 @@ use crate::{
     events::{Event, MIDIEvent},
     notes::MIDINote,
     num::MIDINum,
+    sequence::event::Delta,
     unwrap,
 };
 
 /// Takes a note iterator and converts it to a note event iterator.
 /// Effectively flattening the notes into an event sequence.
-pub fn notes_to_events<
-    T: MIDINum,
-    N: MIDINote<T>,
-    Err,
-    I: Iterator<Item = Result<N, Err>> + Sized,
->(
-    iter: I,
-) -> impl Iterator<Item = Result<Event<T>, Err>> {
+pub fn notes_to_events<D: MIDINum, N: MIDINote<D>, Err>(
+    iter: impl Iterator<Item = Result<N, Err>> + Sized,
+) -> impl Iterator<Item = Result<Delta<D, Event>, Err>> {
     GenIter(move || {
-        let mut note_offs = VecDeque::<Event<T>>::new();
+        let mut note_offs = VecDeque::<Delta<D, Event>>::new();
 
-        let mut prev_time = T::zero();
+        let mut prev_time = D::zero();
 
         for note in iter {
             let note = unwrap!(note);
 
             while let Some(e) = note_offs.front() {
-                if e.delta() <= note.start() {
+                if e.delta <= note.start() {
                     let mut e = note_offs.pop_front().unwrap();
-                    let time = e.delta();
-                    e.set_delta(e.delta() - prev_time);
+                    let time = e.delta;
+                    e.delta = e.delta - prev_time;
                     prev_time = time;
                     yield Ok(e);
                 } else {
@@ -39,7 +35,7 @@ pub fn notes_to_events<
                 }
             }
 
-            yield Ok(Event::new_note_on_event(
+            yield Ok(Event::new_delta_note_on_event(
                 note.start() - prev_time,
                 note.channel(),
                 note.key(),
@@ -49,7 +45,7 @@ pub fn notes_to_events<
             prev_time = note.start();
 
             let time = note.end();
-            let off = Event::new_note_off_event(time, note.channel(), note.key());
+            let off = Event::new_delta_note_off_event(time, note.channel(), note.key());
 
             if note_offs.len() == 0 {
                 note_offs.push_back(off);
@@ -66,8 +62,8 @@ pub fn notes_to_events<
 
                     let e = &note_offs[pos];
 
-                    if e.delta() >= time {
-                        if pos == 0 || note_offs[pos - 1].delta() < time {
+                    if e.delta >= time {
+                        if pos == 0 || note_offs[pos - 1].delta < time {
                             note_offs.insert(pos, off);
                             break;
                         } else {
@@ -96,8 +92,8 @@ pub fn notes_to_events<
         }
 
         while let Some(mut e) = note_offs.pop_front() {
-            let time = e.delta();
-            e.set_delta(e.delta() - prev_time);
+            let time = e.delta;
+            e.delta = e.delta - prev_time;
             prev_time = time;
             yield Ok(e);
         }
@@ -147,12 +143,12 @@ mod tests {
         };
 
         let expected = vec![
-            Event::new_note_on_event(100.0f64, 0, 64, 127),
-            Event::new_note_on_event(30.0f64, 0, 64, 127),
-            Event::new_note_off_event(50.0f64, 0, 64),
-            Event::new_note_off_event(80.0f64, 0, 64),
-            Event::new_note_on_event(0.0f64, 1, 64, 127),
-            Event::new_note_off_event(80.0f64, 1, 64),
+            Event::new_delta_note_on_event(100.0f64, 0, 64, 127),
+            Event::new_delta_note_on_event(30.0f64, 0, 64, 127),
+            Event::new_delta_note_off_event(50.0f64, 0, 64),
+            Event::new_delta_note_off_event(80.0f64, 0, 64),
+            Event::new_delta_note_on_event(0.0f64, 1, 64, 127),
+            Event::new_delta_note_off_event(80.0f64, 1, 64),
         ];
 
         assert_eq!(changed, expected);

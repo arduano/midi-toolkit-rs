@@ -1,12 +1,13 @@
 use crate::events::encode_var_length_value;
 use crate::io::MIDIWriteError;
+use crate::sequence::event::Delta;
 
 use super::event::Event;
 use super::{
     CastEventDelta, ChannelEvent, KeyEvent, MIDIEvent, MIDINum, MIDINumInto, PlaybackEvent,
     SerializeEvent,
 };
-use derive::{CastEventDelta, MIDIEvent, NewEvent};
+use derive::{MIDIEvent, NewEvent};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct MIDIColor {
@@ -50,11 +51,9 @@ impl TextEventKind {
     }
 }
 
-#[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
+#[derive(Debug, MIDIEvent, Clone, NewEvent, PartialEq)]
 #[playback]
-pub struct NoteOnEvent<D: MIDINum> {
-    #[delta]
-    pub delta: D,
+pub struct NoteOnEvent {
     #[channel]
     pub channel: u8,
     #[key]
@@ -62,48 +61,44 @@ pub struct NoteOnEvent<D: MIDINum> {
     pub velocity: u8,
 }
 
-impl<D: MIDINum> SerializeEvent for NoteOnEvent<D> {
+impl SerializeEvent for NoteOnEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let event = [0x90 | self.channel, self.key, self.velocity];
         Ok(buf.write(&event)?)
     }
 }
 
-impl<D: MIDINum> PlaybackEvent for NoteOnEvent<D> {
+impl PlaybackEvent for NoteOnEvent {
     fn as_u32(&self) -> u32 {
         (0x90 | self.channel as u32) | (self.key as u32) << 8 | (self.velocity as u32) << 16
     }
 }
 
-#[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
+#[derive(Debug, MIDIEvent, Clone, NewEvent, PartialEq)]
 #[playback]
-pub struct NoteOffEvent<D: MIDINum> {
-    #[delta]
-    pub delta: D,
+pub struct NoteOffEvent {
     #[channel]
     pub channel: u8,
     #[key]
     pub key: u8,
 }
 
-impl<D: MIDINum> SerializeEvent for NoteOffEvent<D> {
+impl SerializeEvent for NoteOffEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let event = [0x80 | self.channel, self.key, 0];
         Ok(buf.write(&event)?)
     }
 }
 
-impl<D: MIDINum> PlaybackEvent for NoteOffEvent<D> {
+impl PlaybackEvent for NoteOffEvent {
     fn as_u32(&self) -> u32 {
         (0x80 | self.channel as u32) | (self.key as u32) << 8
     }
 }
 
-#[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
+#[derive(Debug, MIDIEvent, Clone, NewEvent, PartialEq)]
 #[playback]
-pub struct PolyphonicKeyPressureEvent<D: MIDINum> {
-    #[delta]
-    pub delta: D,
+pub struct PolyphonicKeyPressureEvent {
     #[channel]
     pub channel: u8,
     #[key]
@@ -111,100 +106,92 @@ pub struct PolyphonicKeyPressureEvent<D: MIDINum> {
     pub velocity: u8,
 }
 
-impl<D: MIDINum> SerializeEvent for PolyphonicKeyPressureEvent<D> {
+impl SerializeEvent for PolyphonicKeyPressureEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let event = [0xA0 | self.channel, self.key, self.velocity];
         Ok(buf.write(&event)?)
     }
 }
 
-impl<D: MIDINum> PlaybackEvent for PolyphonicKeyPressureEvent<D> {
+impl PlaybackEvent for PolyphonicKeyPressureEvent {
     fn as_u32(&self) -> u32 {
         (0xA0 | self.channel as u32) | (self.key as u32) << 8 | (self.velocity as u32) << 16
     }
 }
 
-#[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
+#[derive(Debug, MIDIEvent, Clone, NewEvent, PartialEq)]
 #[playback]
-pub struct ControlChangeEvent<D: MIDINum> {
-    #[delta]
-    pub delta: D,
+pub struct ControlChangeEvent {
     #[channel]
     pub channel: u8,
     pub controller: u8,
     pub value: u8,
 }
 
-impl<D: MIDINum> SerializeEvent for ControlChangeEvent<D> {
+impl SerializeEvent for ControlChangeEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let event = [0xB0 | self.channel, self.controller, self.value];
         Ok(buf.write(&event)?)
     }
 }
 
-impl<D: MIDINum> PlaybackEvent for ControlChangeEvent<D> {
+impl PlaybackEvent for ControlChangeEvent {
     fn as_u32(&self) -> u32 {
         (0xB0 | self.channel as u32) | (self.controller as u32) << 8 | (self.value as u32) << 16
     }
 }
 
-#[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
+#[derive(Debug, MIDIEvent, Clone, NewEvent, PartialEq)]
 #[playback]
-pub struct ProgramChangeEvent<D: MIDINum> {
-    #[delta]
-    pub delta: D,
+pub struct ProgramChangeEvent {
     #[channel]
     pub channel: u8,
     pub program: u8,
 }
 
-impl<D: MIDINum> SerializeEvent for ProgramChangeEvent<D> {
+impl SerializeEvent for ProgramChangeEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let event = [0xC0 | self.channel, self.program];
         Ok(buf.write(&event)?)
     }
 }
 
-impl<D: MIDINum> PlaybackEvent for ProgramChangeEvent<D> {
+impl PlaybackEvent for ProgramChangeEvent {
     fn as_u32(&self) -> u32 {
         (0xC0 | self.channel as u32) | (self.program as u32) << 8
     }
 }
 
-#[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
+#[derive(Debug, MIDIEvent, Clone, NewEvent, PartialEq)]
 #[playback]
-pub struct ChannelPressureEvent<D: MIDINum> {
-    #[delta]
-    pub delta: D,
+pub struct ChannelPressureEvent {
     #[channel]
     pub channel: u8,
     pub pressure: u8,
 }
 
-impl<D: MIDINum> SerializeEvent for ChannelPressureEvent<D> {
+impl SerializeEvent for ChannelPressureEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let event = [0xD0 | self.channel, self.pressure];
         Ok(buf.write(&event)?)
     }
 }
 
-impl<D: MIDINum> PlaybackEvent for ChannelPressureEvent<D> {
+impl PlaybackEvent for ChannelPressureEvent {
     fn as_u32(&self) -> u32 {
         (0xD0 | self.channel as u32) | (self.pressure as u32) << 8
     }
 }
 
-#[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
+#[derive(Debug, MIDIEvent, Clone, NewEvent, PartialEq)]
 #[playback]
-pub struct PitchWheelChangeEvent<D: MIDINum> {
-    #[delta]
-    pub delta: D,
+pub struct PitchWheelChangeEvent {
     #[channel]
     pub channel: u8,
     pub pitch: i16,
 }
 
-impl<D: MIDINum> SerializeEvent for PitchWheelChangeEvent<D> {
+impl SerializeEvent for PitchWheelChangeEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let value = self.pitch + 8192;
         let event = [
@@ -216,7 +203,7 @@ impl<D: MIDINum> SerializeEvent for PitchWheelChangeEvent<D> {
     }
 }
 
-impl<D: MIDINum> PlaybackEvent for PitchWheelChangeEvent<D> {
+impl PlaybackEvent for PitchWheelChangeEvent {
     fn as_u32(&self) -> u32 {
         let value = self.pitch + 8192;
         let val1 = value & 0x7F;
@@ -225,14 +212,12 @@ impl<D: MIDINum> PlaybackEvent for PitchWheelChangeEvent<D> {
     }
 }
 
-#[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
-pub struct SystemExclusiveMessageEvent<D: MIDINum> {
-    #[delta]
-    pub delta: D,
+#[derive(Debug, MIDIEvent, Clone, NewEvent, PartialEq)]
+pub struct SystemExclusiveMessageEvent {
     pub data: Vec<u8>,
 }
 
-impl<D: MIDINum> SerializeEvent for SystemExclusiveMessageEvent<D> {
+impl SerializeEvent for SystemExclusiveMessageEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let mut vec = Vec::new();
         vec.reserve(self.data.len() + 2);
@@ -245,28 +230,24 @@ impl<D: MIDINum> SerializeEvent for SystemExclusiveMessageEvent<D> {
     }
 }
 
-#[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
-pub struct UndefinedEvent<D: MIDINum> {
-    #[delta]
-    pub delta: D,
+#[derive(Debug, MIDIEvent, Clone, NewEvent, PartialEq)]
+pub struct UndefinedEvent {
     pub event: u8,
 }
 
-impl<D: MIDINum> SerializeEvent for UndefinedEvent<D> {
+impl SerializeEvent for UndefinedEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let event = [self.event];
         Ok(buf.write(&event)?)
     }
 }
 
-#[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
-pub struct SongPositionPointerEvent<D: MIDINum> {
-    #[delta]
-    pub delta: D,
+#[derive(Debug, MIDIEvent, Clone, NewEvent, PartialEq)]
+pub struct SongPositionPointerEvent {
     pub position: u16,
 }
 
-impl<D: MIDINum> SerializeEvent for SongPositionPointerEvent<D> {
+impl SerializeEvent for SongPositionPointerEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let event = [
             0xF2,
@@ -277,68 +258,55 @@ impl<D: MIDINum> SerializeEvent for SongPositionPointerEvent<D> {
     }
 }
 
-#[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
-pub struct SongSelectEvent<D: MIDINum> {
-    #[delta]
-    pub delta: D,
+#[derive(Debug, MIDIEvent, Clone, NewEvent, PartialEq)]
+pub struct SongSelectEvent {
     pub song: u8,
 }
 
-impl<D: MIDINum> SerializeEvent for SongSelectEvent<D> {
+impl SerializeEvent for SongSelectEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let event = [0xF3, self.song];
         Ok(buf.write(&event)?)
     }
 }
 
-#[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
-pub struct TuneRequestEvent<D: MIDINum> {
-    #[delta]
-    pub delta: D,
-}
+#[derive(Debug, MIDIEvent, Clone, NewEvent, PartialEq)]
+pub struct TuneRequestEvent {}
 
-impl<D: MIDINum> SerializeEvent for TuneRequestEvent<D> {
+impl SerializeEvent for TuneRequestEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let event = [0xF6];
         Ok(buf.write(&event)?)
     }
 }
 
-#[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
-pub struct EndOfExclusiveEvent<D: MIDINum> {
-    #[delta]
-    pub delta: D,
-}
+#[derive(Debug, MIDIEvent, Clone, NewEvent, PartialEq)]
+pub struct EndOfExclusiveEvent {}
 
-impl<D: MIDINum> SerializeEvent for EndOfExclusiveEvent<D> {
+impl SerializeEvent for EndOfExclusiveEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let event = [0xF7];
         Ok(buf.write(&event)?)
     }
 }
 
-#[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
-pub struct TrackStartEvent<D: MIDINum> {
-    #[delta]
-    pub delta: D,
-}
+#[derive(Debug, MIDIEvent, Clone, NewEvent, PartialEq)]
+pub struct TrackStartEvent {}
 
-impl<D: MIDINum> SerializeEvent for TrackStartEvent<D> {
+impl SerializeEvent for TrackStartEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let event = [0xFF, 0x00, 0x02];
         Ok(buf.write(&event)?)
     }
 }
 
-#[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
-pub struct TextEvent<D: MIDINum> {
-    #[delta]
-    pub delta: D,
+#[derive(Debug, MIDIEvent, Clone, NewEvent, PartialEq)]
+pub struct TextEvent {
     pub kind: TextEventKind,
     pub bytes: Vec<u8>,
 }
 
-impl<D: MIDINum> SerializeEvent for TextEvent<D> {
+impl SerializeEvent for TextEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let mut vec = Vec::new();
         vec.reserve(self.bytes.len() + 2);
@@ -352,15 +320,13 @@ impl<D: MIDINum> SerializeEvent for TextEvent<D> {
     }
 }
 
-#[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
-pub struct UnknownMetaEvent<D: MIDINum> {
-    #[delta]
-    pub delta: D,
+#[derive(Debug, MIDIEvent, Clone, NewEvent, PartialEq)]
+pub struct UnknownMetaEvent {
     pub kind: u8,
     pub bytes: Vec<u8>,
 }
 
-impl<D: MIDINum> SerializeEvent for UnknownMetaEvent<D> {
+impl SerializeEvent for UnknownMetaEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let mut vec = Vec::new();
         vec.reserve(self.bytes.len() + 2);
@@ -374,59 +340,51 @@ impl<D: MIDINum> SerializeEvent for UnknownMetaEvent<D> {
     }
 }
 
-#[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
-pub struct ColorEvent<D: MIDINum> {
-    #[delta]
-    pub delta: D,
+#[derive(Debug, MIDIEvent, Clone, NewEvent, PartialEq)]
+pub struct ColorEvent {
     pub channel: u8,
     pub col: MIDIColor,
     pub col2: Option<MIDIColor>,
 }
 
-impl<D: MIDINum> SerializeEvent for ColorEvent<D> {
+impl SerializeEvent for ColorEvent {
     fn serialize_event<T: std::io::Write>(&self, _buf: &mut T) -> Result<usize, MIDIWriteError> {
         todo!();
     }
 }
 
-#[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
-pub struct ChannelPrefixEvent<D: MIDINum> {
-    #[delta]
-    pub delta: D,
+#[derive(Debug, MIDIEvent, Clone, NewEvent, PartialEq)]
+pub struct ChannelPrefixEvent {
     #[channel]
     pub channel: u8,
 }
 
-impl<D: MIDINum> SerializeEvent for ChannelPrefixEvent<D> {
+impl SerializeEvent for ChannelPrefixEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let event = [0xFF, 0x20, 0x01, self.channel];
         Ok(buf.write(&event)?)
     }
 }
 
-#[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
-pub struct MIDIPortEvent<D: MIDINum> {
-    #[delta]
-    pub delta: D,
+#[derive(Debug, MIDIEvent, Clone, NewEvent, PartialEq)]
+pub struct MIDIPortEvent {
     #[channel]
     pub channel: u8,
 }
 
-impl<D: MIDINum> SerializeEvent for MIDIPortEvent<D> {
+impl SerializeEvent for MIDIPortEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let event = [0xFF, 0x21, 0x01, self.channel];
         Ok(buf.write(&event)?)
     }
 }
 
-#[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
-pub struct TempoEvent<D: MIDINum> {
-    #[delta]
-    pub delta: D,
+#[derive(Debug, MIDIEvent, Clone, NewEvent, PartialEq)]
+pub struct TempoEvent {
     pub tempo: u32,
 }
 
-impl<D: MIDINum> SerializeEvent for TempoEvent<D> {
+impl SerializeEvent for TempoEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let event = [
             0xFF,
@@ -440,10 +398,8 @@ impl<D: MIDINum> SerializeEvent for TempoEvent<D> {
     }
 }
 
-#[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
-pub struct SMPTEOffsetEvent<D: MIDINum> {
-    #[delta]
-    pub delta: D,
+#[derive(Debug, MIDIEvent, Clone, NewEvent, PartialEq)]
+pub struct SMPTEOffsetEvent {
     pub hours: u8,
     pub minutes: u8,
     pub seconds: u8,
@@ -451,7 +407,7 @@ pub struct SMPTEOffsetEvent<D: MIDINum> {
     pub fractional_frames: u8,
 }
 
-impl<D: MIDINum> SerializeEvent for SMPTEOffsetEvent<D> {
+impl SerializeEvent for SMPTEOffsetEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let event = [
             0xFF,
@@ -467,17 +423,15 @@ impl<D: MIDINum> SerializeEvent for SMPTEOffsetEvent<D> {
     }
 }
 
-#[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
-pub struct TimeSignatureEvent<D: MIDINum> {
-    #[delta]
-    pub delta: D,
+#[derive(Debug, MIDIEvent, Clone, NewEvent, PartialEq)]
+pub struct TimeSignatureEvent {
     pub numerator: u8,
     pub denominator: u8,
     pub ticks_per_click: u8,
     pub bb: u8,
 }
 
-impl<D: MIDINum> SerializeEvent for TimeSignatureEvent<D> {
+impl SerializeEvent for TimeSignatureEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let event = [
             0xFF,
@@ -492,15 +446,13 @@ impl<D: MIDINum> SerializeEvent for TimeSignatureEvent<D> {
     }
 }
 
-#[derive(Debug, MIDIEvent, CastEventDelta, Clone, NewEvent, PartialEq)]
-pub struct KeySignatureEvent<D: MIDINum> {
-    #[delta]
-    pub delta: D,
+#[derive(Debug, MIDIEvent, Clone, NewEvent, PartialEq)]
+pub struct KeySignatureEvent {
     pub sf: u8,
     pub mi: u8,
 }
 
-impl<D: MIDINum> SerializeEvent for KeySignatureEvent<D> {
+impl SerializeEvent for KeySignatureEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let event = [0xFF, 0x59, 0x02, self.sf, self.mi];
         Ok(buf.write(&event)?)

@@ -6,6 +6,7 @@ use crate::{
     events::{Event, MIDIEventEnum},
     notes::Note,
     num::MIDINum,
+    sequence::event::Delta,
     unwrap,
 };
 
@@ -118,21 +119,21 @@ impl<T: MIDINum> NoteQueue<T> {
 /// Takes an event iterator and converts it to a note iterator.
 /// Effectively extracting the notes from an event sequence.
 pub fn events_to_notes<
-    T: MIDINum,
-    E: MIDIEventEnum<T>,
+    D: MIDINum,
+    E: MIDIEventEnum,
     Err,
-    I: Iterator<Item = Result<E, Err>> + Sized,
+    I: Iterator<Item = Result<Delta<D, E>, Err>> + Sized,
 >(
     iter: I,
-) -> impl Iterator<Item = Result<Note<T>, Err>> {
+) -> impl Iterator<Item = Result<Note<D>, Err>> {
     GenIter(move || {
-        let mut note_queue = NoteQueue::<T>::new();
+        let mut note_queue = NoteQueue::<D>::new();
 
-        let mut time = T::zero();
+        let mut time = D::zero();
         for e in iter {
             let e = unwrap!(e);
 
-            time += e.delta();
+            time += e.delta;
             match e.as_event() {
                 Event::NoteOn(e) => {
                     let note = Note {
@@ -140,7 +141,7 @@ pub fn events_to_notes<
                         channel: e.channel,
                         key: e.key,
                         velocity: e.velocity,
-                        len: T::zero(),
+                        len: D::zero(),
                     };
 
                     note_queue.push(note);
@@ -175,13 +176,13 @@ mod tests {
     #[test]
     fn convert_events_to_notes() {
         let events = vec![
-            Event::new_note_on_event(100.0f64, 0, 64, 127),
-            Event::new_note_on_event(30.0f64, 0, 64, 127),
-            Event::new_tempo_event(25.0f64, 0),
-            Event::new_note_off_event(25.0f64, 0, 64),
-            Event::new_note_off_event(80.0f64, 0, 64),
-            Event::new_note_on_event(0.0f64, 1, 64, 127),
-            Event::new_note_off_event(80.0f64, 1, 64),
+            Event::new_delta_note_on_event(100.0f64, 0, 64, 127),
+            Event::new_delta_note_on_event(30.0f64, 0, 64, 127),
+            Event::new_delta_tempo_event(25.0f64, 0),
+            Event::new_delta_note_off_event(25.0f64, 0, 64),
+            Event::new_delta_note_off_event(80.0f64, 0, 64),
+            Event::new_delta_note_on_event(0.0f64, 1, 64, 127),
+            Event::new_delta_note_off_event(80.0f64, 1, 64),
         ];
 
         let changed = pipe! {

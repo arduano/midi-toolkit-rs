@@ -1,7 +1,7 @@
 use gen_iter::GenIter;
 
 use crate::{
-    events::{Event, MIDIEvent, MIDIEventEnum},
+    events::{Event, MIDIDelta, MIDIEvent, MIDIEventEnum},
     num::MIDINum,
     unwrap,
 };
@@ -41,22 +41,22 @@ use crate::{
 ///     ]
 /// )
 ///```
-pub fn filter_events<T, E, Err, I>(
+pub fn filter_events<D, E, Err, I>(
     iter: I,
     predicate: impl Fn(&E) -> bool,
 ) -> impl Iterator<Item = Result<E, Err>>
 where
-    T: MIDINum,
-    E: MIDIEvent<T>,
+    D: MIDINum,
+    E: MIDIEventEnum + MIDIDelta<D>,
     I: Iterator<Item = Result<E, Err>> + Sized,
 {
-    let mut extra_delta = T::zero();
+    let mut extra_delta = D::zero();
     GenIter(move || {
         for e in iter {
             let mut e = unwrap!(e);
             if predicate(&e) {
                 e.set_delta(e.delta() + extra_delta);
-                extra_delta = T::zero();
+                extra_delta = D::zero();
                 yield Ok(e);
             } else {
                 extra_delta += e.delta();
@@ -97,10 +97,10 @@ where
 ///     ]
 /// )
 ///```
-pub fn filter_note_events<T, E, Err, I>(iter: I) -> impl Iterator<Item = Result<E, Err>>
+pub fn filter_note_events<D, E, Err, I>(iter: I) -> impl Iterator<Item = Result<E, Err>>
 where
-    T: MIDINum,
-    E: MIDIEventEnum<T>,
+    D: MIDINum,
+    E: MIDIEventEnum + MIDIDelta<D>,
     I: Iterator<Item = Result<E, Err>> + Sized,
 {
     filter_events(iter, |e| match e.as_event() {
@@ -141,10 +141,10 @@ where
 ///     ]
 /// )
 ///```
-pub fn filter_non_note_events<T, E, Err, I>(iter: I) -> impl Iterator<Item = Result<E, Err>>
+pub fn filter_non_note_events<D, E, Err, I>(iter: I) -> impl Iterator<Item = Result<E, Err>>
 where
-    T: MIDINum,
-    E: MIDIEventEnum<T>,
+    D: MIDINum,
+    E: MIDIEventEnum + MIDIDelta<D>,
     I: Iterator<Item = Result<E, Err>> + Sized,
 {
     filter_events(iter, |e| match e.as_event() {

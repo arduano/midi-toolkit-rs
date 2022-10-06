@@ -24,7 +24,7 @@ fn find_attr_fields<'a>(fields: &'a Fields, name: &str) -> Option<&'a Ident> {
     }
 }
 
-#[proc_macro_derive(MIDIEvent, attributes(key, channel, delta, playback))]
+#[proc_macro_derive(MIDIEvent, attributes(key, channel, playback))]
 #[proc_macro_error]
 pub fn midi_event(input: TokenStream) -> TokenStream {
     let ast: DeriveInput = syn::parse(input).expect_or_abort("Couldn't parse for MIDIEvent");
@@ -35,16 +35,10 @@ pub fn midi_event(input: TokenStream) -> TokenStream {
 
     // Is it a struct?
     if let syn::Data::Struct(DataStruct { ref fields, .. }) = ast.data {
-        let delta_field = find_attr_fields(fields, "delta");
         let key_field = find_attr_fields(fields, "key");
         let channel_field = find_attr_fields(fields, "channel");
 
         let playback_event = has_attr(&ast.attrs, "playback");
-
-        let delta_ident = match delta_field {
-            None => abort_call_site!("MIDI events must have a delta time field (use #[delta])!"),
-            Some(ident) => ident,
-        };
 
         if key_field.is_some() && channel_field.is_none() {
             abort_call_site!(
@@ -56,28 +50,11 @@ pub fn midi_event(input: TokenStream) -> TokenStream {
         let mut generated_trait_impl = Vec::new();
         let mut generated_traits = Vec::new();
 
-        generated_trait_impl.push(quote! {
-            #[inline(always)]
-            fn delta(&self) -> D {
-                self.#delta_ident
-            }
-
-            #[inline(always)]
-            fn delta_mut(&mut self) -> &mut D {
-                &mut self.#delta_ident
-            }
-        });
-
         if playback_event {
             generated_impl.push(quote! {
                 #[inline(always)]
                 pub fn as_u32(&self) -> u32 {
                     PlaybackEvent::as_u32(self)
-                }
-
-                #[inline(always)]
-                pub fn as_playback_event<'a>(&'a self) -> Box<&'a dyn PlaybackEvent> {
-                    Box::new(self)
                 }
             });
 
@@ -86,21 +63,11 @@ pub fn midi_event(input: TokenStream) -> TokenStream {
                 fn as_u32(&self) -> Option<u32> {
                     Some(PlaybackEvent::as_u32(self))
                 }
-
-                #[inline(always)]
-                fn as_playback_event<'a>(&'a self) -> Option<Box<&'a dyn PlaybackEvent>> {
-                    Some(Box::new(self))
-                }
             });
         } else {
             generated_trait_impl.push(quote! {
                 #[inline(always)]
                 fn as_u32(&self) -> Option<u32> {
-                    None
-                }
-
-                #[inline(always)]
-                fn as_playback_event<'a>(&'a self) -> Option<Box<&'a dyn PlaybackEvent>> {
                     None
                 }
             });
@@ -118,16 +85,6 @@ pub fn midi_event(input: TokenStream) -> TokenStream {
                     fn key_mut(&mut self) -> Option<&mut u8> {
                         None
                     }
-
-                    #[inline(always)]
-                    fn as_key_event<'a>(&'a self) -> Option<Box<&'a dyn KeyEvent>> {
-                        None
-                    }
-
-                    #[inline(always)]
-                    fn as_key_event_mut<'a>(&'a mut self) -> Option<Box<&'a mut dyn KeyEvent>> {
-                        None
-                    }
                 });
             }
             Some(ident) => {
@@ -141,16 +98,6 @@ pub fn midi_event(input: TokenStream) -> TokenStream {
                     pub fn key_mut(&mut self) -> &mut u8 {
                         &mut self.#ident
                     }
-
-                    #[inline(always)]
-                    pub fn as_key_event<'a>(&'a self) -> Box<&'a dyn KeyEvent> {
-                        Box::new(self)
-                    }
-
-                    #[inline(always)]
-                    pub fn as_key_event_mut<'a>(&'a mut self) -> Box<&'a mut dyn KeyEvent> {
-                        Box::new(self)
-                    }
                 });
 
                 generated_trait_impl.push(quote! {
@@ -162,16 +109,6 @@ pub fn midi_event(input: TokenStream) -> TokenStream {
                     #[inline(always)]
                     fn key_mut(&mut self) -> Option<&mut u8> {
                         Some(&mut self.#ident)
-                    }
-
-                    #[inline(always)]
-                    fn as_key_event<'a>(&'a self) -> Option<Box<&'a dyn KeyEvent>> {
-                        Some(Box::new(self))
-                    }
-
-                    #[inline(always)]
-                    fn as_key_event_mut<'a>(&'a mut self) -> Option<Box<&'a mut dyn KeyEvent>> {
-                        Some(Box::new(self))
                     }
                 });
 
@@ -203,16 +140,6 @@ pub fn midi_event(input: TokenStream) -> TokenStream {
                     fn channel_mut(&mut self) -> Option<&mut u8> {
                         None
                     }
-
-                    #[inline(always)]
-                    fn as_channel_event<'a>(&'a self) -> Option<Box<&'a dyn ChannelEvent>> {
-                        None
-                    }
-
-                    #[inline(always)]
-                    fn as_channel_event_mut<'a>(&'a mut self) -> Option<Box<&'a mut dyn ChannelEvent>> {
-                        None
-                    }
                 });
             }
             Some(ident) => {
@@ -226,16 +153,6 @@ pub fn midi_event(input: TokenStream) -> TokenStream {
                     pub fn channel_mut(&mut self) -> &mut u8 {
                         &mut self.#ident
                     }
-
-                    #[inline(always)]
-                    pub fn as_channel_event<'a>(&'a self) -> Box<&'a dyn ChannelEvent> {
-                        Box::new(self)
-                    }
-
-                    #[inline(always)]
-                    pub fn as_channel_event_mut<'a>(&'a mut self) -> Box<&'a mut dyn ChannelEvent> {
-                        Box::new(self)
-                    }
                 });
 
                 generated_trait_impl.push(quote! {
@@ -247,16 +164,6 @@ pub fn midi_event(input: TokenStream) -> TokenStream {
                     #[inline(always)]
                     fn channel_mut(&mut self) -> Option<&mut u8> {
                         Some(&mut self.#ident)
-                    }
-
-                    #[inline(always)]
-                    fn as_channel_event<'a>(&'a self) -> Option<Box<&'a dyn ChannelEvent>> {
-                        Some(Box::new(self))
-                    }
-
-                    #[inline(always)]
-                    fn as_channel_event_mut<'a>(&'a mut self) -> Option<Box<&'a mut dyn ChannelEvent>> {
-                        Some(Box::new(self))
                     }
                 });
 
@@ -279,67 +186,12 @@ pub fn midi_event(input: TokenStream) -> TokenStream {
         let gen = quote! {
             #(#generated_traits)*
 
-            impl<D: MIDINum> MIDIEvent<D> for #name <D> #where_clause {
+            impl MIDIEvent for #name #where_clause {
                 #(#generated_trait_impl)*
             }
 
             impl #impl_generics #name #ty_generics #where_clause {
                 #(#generated_impl)*
-            }
-        };
-
-        gen.into()
-    } else {
-        // Nope. This is an Enum.
-        abort_call_site!("#[derive(MIDIEvent)] is only defined for structs, not for enums!");
-    }
-}
-
-#[proc_macro_derive(CastEventDelta, attributes(delta))]
-#[proc_macro_error]
-pub fn cast_event_delta(input: TokenStream) -> TokenStream {
-    let ast: DeriveInput = syn::parse(input).expect_or_abort("Couldn't parse for CastEventDelta");
-
-    let name = &ast.ident;
-
-    // Is it a struct?
-    if let syn::Data::Struct(DataStruct { ref fields, .. }) = ast.data {
-        let delta_field = find_attr_fields(fields, "delta");
-
-        let delta_ident = match delta_field {
-            None => abort_call_site!(
-                "Struct must have a marked delta field for CastEventDelta (use #[delta])!"
-            ),
-            Some(ident) => ident,
-        };
-
-        let mut generated_cast = Vec::new();
-
-        for field in fields.iter() {
-            match &field.ident {
-                None => {}
-                Some(ident) => {
-                    if ident != delta_ident {
-                        generated_cast.push(quote! {
-                            #ident: self.#ident.clone(),
-                        });
-                    }
-                }
-            }
-        }
-
-        let gen = quote! {
-            impl<TT, DT: MIDINum> CastEventDelta<DT, #name <DT>> for #name <TT>
-            where
-                TT: MIDINum + MIDINumInto<DT>,
-            {
-                #[inline(always)]
-                fn cast_delta(&self) -> #name <DT> {
-                    #name {
-                        #(#generated_cast)*
-                        #delta_ident: self.#delta_ident.midi_num_into(),
-                    }
-                }
             }
         };
 
@@ -371,7 +223,7 @@ pub fn create_new_event(input: TokenStream) -> TokenStream {
 
     let name = &ast.ident;
     let generics = &ast.generics;
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+    let (impl_generics, _ty_generics, where_clause) = generics.split_for_impl();
 
     // Is it a struct?
     if let syn::Data::Struct(DataStruct { ref fields, .. }) = ast.data {
@@ -381,9 +233,18 @@ pub fn create_new_event(input: TokenStream) -> TokenStream {
         let event_ident = event_enum_from_struct(name);
         let snake_case = name.unraw().to_string()[..].to_case(Case::Snake);
         let new_ident = Ident::new(&format!("new_{}", snake_case)[..], Span::call_site());
+        let new_delta_ident =
+            Ident::new(&format!("new_delta_{}", snake_case)[..], Span::call_site());
 
         let doc_str = &format!("Creates a new `{}`.", name);
         let doc_str2 = &format!(
+            "Creates a new [`{}`](crate::events::{}) wrapped in [`Event::{}`](crate::events::Event::{}).",
+            name,
+            name,
+            event_ident.unraw().to_string(),
+            event_ident.unraw().to_string()
+        );
+        let doc_str2_delta = &format!(
             "Creates a new [`{}`](crate::events::{}) wrapped in [`Event::{}`](crate::events::Event::{}).",
             name,
             name,
@@ -403,7 +264,7 @@ pub fn create_new_event(input: TokenStream) -> TokenStream {
         }
 
         let gen = quote! {
-            impl #impl_generics #name #ty_generics #where_clause {
+            impl #impl_generics #name #where_clause {
                 #[doc=#doc_str]
                 #[inline(always)]
                 pub fn new(#(#new_args)*) -> Self {
@@ -413,11 +274,17 @@ pub fn create_new_event(input: TokenStream) -> TokenStream {
                 }
             }
 
-            impl<D: MIDINum> Event<D> {
+            impl Event {
                 #[doc=#doc_str2]
                 #[inline(always)]
-                pub fn #new_ident(#(#new_args)*) -> Event::#ty_generics {
+                pub fn #new_ident(#(#new_args)*) -> Event {
                     (#name :: new(#(#assign)*)).as_event()
+                }
+
+                #[doc=#doc_str2_delta]
+                #[inline(always)]
+                pub fn #new_delta_ident<D: MIDINum>(delta: D, #(#new_args)*) -> Delta<D, Event> {
+                    Delta::new(delta, (#name :: new(#(#assign)*)).as_event())
                 }
             }
         };
@@ -429,7 +296,7 @@ pub fn create_new_event(input: TokenStream) -> TokenStream {
     }
 }
 
-#[proc_macro_derive(EventImpl, attributes(channel, key, playback))]
+#[proc_macro_derive(EventImpl, attributes(channel, key, playback, tempo))]
 #[proc_macro_error]
 pub fn event_impl(input: TokenStream) -> TokenStream {
     let ast: DeriveInput = syn::parse(input).expect_or_abort("Couldn't parse for EventImpl");
@@ -495,16 +362,13 @@ pub fn event_impl(input: TokenStream) -> TokenStream {
             }
         }
 
-        fn create_match<
-            T: Fn(
-                (
-                    &Variant,
-                    &Box<dyn Mapper>,
-                    &Box<dyn Mapper>,
-                    &Box<dyn Mapper>,
-                ),
-            ) -> TokenStream2,
-        >(
+        struct Mappers<'a> {
+            wrap_key: &'a dyn Mapper,
+            wrap_channel: &'a dyn Mapper,
+            wrap_playback: &'a dyn Mapper,
+        }
+
+        fn create_match<T: Fn(&Variant, Mappers) -> TokenStream2>(
             variants: &Vec<&Variant>,
             map: T,
         ) -> TokenStream2 {
@@ -515,31 +379,32 @@ pub fn event_impl(input: TokenStream) -> TokenStream {
                 variants
                     .iter()
                     .map(|v| {
-                        (
+                        map(
                             *v,
-                            if is_key(v) { &wrap_some } else { &dont_wrap },
-                            if is_channel(v) {
-                                &wrap_some
-                            } else {
-                                &dont_wrap
-                            },
-                            if is_playback(v) {
-                                &wrap_some
-                            } else {
-                                &dont_wrap
+                            Mappers {
+                                wrap_key: if is_key(v) { &*wrap_some } else { &*dont_wrap },
+                                wrap_channel: if is_channel(v) {
+                                    &*wrap_some
+                                } else {
+                                    &*dont_wrap
+                                },
+                                wrap_playback: if is_playback(v) {
+                                    &*wrap_some
+                                } else {
+                                    &*dont_wrap
+                                },
                             },
                         )
                     })
-                    .map(map)
                     .collect::<Vec<_>>(),
             )
         }
 
         let variants = variants.iter().collect::<Vec<_>>();
 
-        let clone_match = create_match(&variants, |v| {
-            let ident = &v.0.ident;
-            if is_boxed(v.0) {
+        let clone_match = create_match(&variants, |v, mappers| {
+            let ident = &v.ident;
+            if is_boxed(v) {
                 make_match_line(
                     ident,
                     quote! { Event::#ident(Box::new(event.as_ref().clone())) },
@@ -551,39 +416,31 @@ pub fn event_impl(input: TokenStream) -> TokenStream {
 
         macro_rules! make_map {
             ($res:expr) => {
-                create_match(&variants, |(v, _, _, _)| make_match_line(&v.ident, $res))
+                create_match(&variants, |v, _| make_match_line(&v.ident, $res))
             };
             (key, $res:expr) => {
-                create_match(&variants, |(v, wrap_key, _, _)| {
+                create_match(&variants, |v, Mappers { wrap_key, .. }| {
                     make_match_line(&v.ident, wrap_key.wrap($res))
                 })
             };
             (channel, $res:expr) => {
-                create_match(&variants, |(v, _, wrap_chan, _)| {
-                    make_match_line(&v.ident, wrap_chan.wrap($res))
+                create_match(&variants, |v, Mappers { wrap_channel, .. }| {
+                    make_match_line(&v.ident, wrap_channel.wrap($res))
                 })
             };
             (playback, $res:expr) => {
-                create_match(&variants, |(v, _, _, wrap_pb)| {
-                    make_match_line(&v.ident, wrap_pb.wrap($res))
+                create_match(&variants, |v, Mappers { wrap_playback, .. }| {
+                    make_match_line(&v.ident, wrap_playback.wrap($res))
                 })
             };
         }
 
-        let delta = make_map!(quote! { event.delta });
-        let delta_mut = make_map!(quote! { &mut event.delta });
         let key = make_map!(key, quote! { event.key() });
         let key_mut = make_map!(key, quote! { event.key_mut() });
         let channel = make_map!(channel, quote! { event.channel() });
         let channel_mut = make_map!(channel, quote! { event.channel_mut() });
-        let as_key_event = make_map!(key, quote! { event.as_key_event() });
-        let as_key_event_mut = make_map!(key, quote! { event.as_key_event_mut() });
-        let as_channel_event = make_map!(channel, quote! { event.as_channel_event() });
-        let as_channel_event_mut = make_map!(channel, quote! { event.as_channel_event_mut() });
         let as_u32 = make_map!(playback, quote! { event.as_u32() });
-        let as_playback_event = make_map!(playback, quote! { event.as_playback_event() });
 
-        let cast_delta = make_map!(quote! { event.cast_delta().as_event() });
         let serialize_event = make_map!(quote! { event.serialize_event(buf) });
 
         let mut event_wrap_impl = Vec::new();
@@ -628,16 +485,6 @@ pub fn event_impl(input: TokenStream) -> TokenStream {
 
             impl#impl_generics MIDIEvent #ty_generics for #name #ty_generics #where_clause {
                 #[inline(always)]
-                fn delta(&self) -> D {
-                    #delta
-                }
-
-                #[inline(always)]
-                fn delta_mut(&mut self) -> &mut D {
-                    #delta_mut
-                }
-
-                #[inline(always)]
                 fn key(&self) -> Option<u8> {
                     #key
                 }
@@ -658,49 +505,14 @@ pub fn event_impl(input: TokenStream) -> TokenStream {
                 }
 
                 #[inline(always)]
-                fn as_key_event<'a>(&'a self) -> Option<Box<&'a dyn KeyEvent>> {
-                    #as_key_event
-                }
-
-                #[inline(always)]
-                fn as_key_event_mut<'a>(&'a mut self) -> Option<Box<&'a mut dyn KeyEvent>> {
-                    #as_key_event_mut
-                }
-
-                #[inline(always)]
-                fn as_channel_event<'a>(&'a self) -> Option<Box<&'a dyn ChannelEvent>> {
-                    #as_channel_event
-                }
-
-                #[inline(always)]
-                fn as_channel_event_mut<'a>(&'a mut self) -> Option<Box<&'a mut dyn ChannelEvent>> {
-                    #as_channel_event_mut
-                }
-
-                #[inline(always)]
                 fn as_u32(&self) -> Option<u32> {
                     #as_u32
-                }
-
-                #[inline(always)]
-                fn as_playback_event<'a>(&'a self) -> Option<Box<&'a dyn PlaybackEvent>> {
-                    #as_playback_event
                 }
             }
 
             #(#event_wrap_impl)*
 
-            impl<TT, DT: MIDINum> CastEventDelta<DT, #name<DT>> for #name<TT>
-            where
-                TT: MIDINum + MIDINumInto<DT>,
-            {
-                #[inline(always)]
-                fn cast_delta(&self) -> #name<DT> {
-                    #cast_delta
-                }
-            }
-
-            impl<D: MIDINum> SerializeEvent for Event<D> {
+            impl SerializeEvent for Event {
                 #[inline(always)]
                 fn serialize_event<T: Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
                     #serialize_event

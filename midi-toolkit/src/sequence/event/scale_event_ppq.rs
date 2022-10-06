@@ -1,4 +1,7 @@
-use crate::{events::MIDIEvent, num::MIDINum};
+use crate::{
+    events::{MIDIDelta, MIDIEvent},
+    num::MIDINum,
+};
 
 /// Change the PPQ of an event sequence.
 ///
@@ -12,10 +15,10 @@ use crate::{events::MIDIEvent, num::MIDINum};
 ///};
 ///
 ///let events = vec![
-///    Event::new_note_on_event(100.0f64, 0, 64, 127),
-///    Event::new_note_off_event(50.0f64, 0, 64),
-///    Event::new_note_on_event(30.0f64, 0, 64, 127),
-///    Event::new_note_off_event(80.0f64, 0, 64),
+///    Event::new_delta_note_on_event(100.0f64, 0, 64, 127),
+///    Event::new_delta_note_off_event(50.0f64, 0, 64),
+///    Event::new_delta_note_on_event(30.0f64, 0, 64, 127),
+///    Event::new_delta_note_off_event(80.0f64, 0, 64),
 ///];
 ///
 ///let changed = pipe! {
@@ -28,22 +31,22 @@ use crate::{events::MIDIEvent, num::MIDINum};
 ///assert_eq!(
 ///    changed,
 ///    vec![
-///        Event::new_note_on_event(150.0f64, 0, 64, 127),
-///        Event::new_note_off_event(75.0f64, 0, 64),
-///        Event::new_note_on_event(45.0f64, 0, 64, 127),
-///        Event::new_note_off_event(120.0f64, 0, 64),
+///        Event::new_delta_note_on_event(150.0f64, 0, 64, 127),
+///        Event::new_delta_note_off_event(75.0f64, 0, 64),
+///        Event::new_delta_note_on_event(45.0f64, 0, 64, 127),
+///        Event::new_delta_note_off_event(120.0f64, 0, 64),
 ///    ]
 ///)
 ///```
 pub fn scale_event_ppq<
-    T: MIDINum,
-    E: MIDIEvent<T>,
+    D: MIDINum,
+    E: MIDIEvent + MIDIDelta<D>,
     Err,
     I: Iterator<Item = Result<E, Err>> + Sized,
 >(
     iter: I,
-    from: T,
-    to: T,
+    from: D,
+    to: D,
 ) -> impl Iterator<Item = Result<E, Err>> {
     iter.map(move |e| {
         let mut e = e?;
@@ -64,10 +67,10 @@ mod tests {
     #[test]
     fn delta_change() {
         let events = vec![
-            Event::new_note_on_event(100.0f64, 0, 64, 127),
-            Event::new_note_off_event(50.0f64, 0, 64),
-            Event::new_note_on_event(30.0f64, 0, 64, 127),
-            Event::new_note_off_event(80.0f64, 0, 64),
+            Event::new_delta_note_on_event(100.0f64, 0, 64, 127),
+            Event::new_delta_note_off_event(50.0f64, 0, 64),
+            Event::new_delta_note_on_event(30.0f64, 0, 64, 127),
+            Event::new_delta_note_off_event(80.0f64, 0, 64),
         ];
 
         let changed = pipe! {
@@ -80,10 +83,10 @@ mod tests {
         assert_eq!(
             changed,
             vec![
-                Event::new_note_on_event(150.0f64, 0, 64, 127),
-                Event::new_note_off_event(75.0f64, 0, 64),
-                Event::new_note_on_event(45.0f64, 0, 64, 127),
-                Event::new_note_off_event(120.0f64, 0, 64),
+                Event::new_delta_note_on_event(150.0f64, 0, 64, 127),
+                Event::new_delta_note_off_event(75.0f64, 0, 64),
+                Event::new_delta_note_on_event(45.0f64, 0, 64, 127),
+                Event::new_delta_note_off_event(120.0f64, 0, 64),
             ]
         )
     }
@@ -91,10 +94,10 @@ mod tests {
     #[test]
     fn delta_change_ints() {
         let events = vec![
-            Event::new_note_on_event(100, 0, 64, 127),
-            Event::new_note_off_event(50, 0, 64),
-            Event::new_note_on_event(30, 0, 64, 127),
-            Event::new_note_off_event(80, 0, 64),
+            Event::new_delta_note_on_event(100, 0, 64, 127),
+            Event::new_delta_note_off_event(50, 0, 64),
+            Event::new_delta_note_on_event(30, 0, 64, 127),
+            Event::new_delta_note_off_event(80, 0, 64),
         ];
 
         let changed = pipe! {
@@ -107,10 +110,10 @@ mod tests {
         assert_eq!(
             changed,
             vec![
-                Event::new_note_on_event(150, 0, 64, 127),
-                Event::new_note_off_event(75, 0, 64),
-                Event::new_note_on_event(45, 0, 64, 127),
-                Event::new_note_off_event(120, 0, 64),
+                Event::new_delta_note_on_event(150, 0, 64, 127),
+                Event::new_delta_note_off_event(75, 0, 64),
+                Event::new_delta_note_on_event(45, 0, 64, 127),
+                Event::new_delta_note_off_event(120, 0, 64),
             ]
         )
     }
@@ -118,10 +121,10 @@ mod tests {
     #[test]
     fn delta_change_ints_divide() {
         let events = vec![
-            Event::new_note_on_event(100, 0, 64, 127),
-            Event::new_note_off_event(50, 0, 64),
-            Event::new_note_on_event(30, 0, 64, 127),
-            Event::new_note_off_event(80, 0, 64),
+            Event::new_delta_note_on_event(100, 0, 64, 127),
+            Event::new_delta_note_off_event(50, 0, 64),
+            Event::new_delta_note_on_event(30, 0, 64, 127),
+            Event::new_delta_note_off_event(80, 0, 64),
         ];
 
         let changed = pipe! {
@@ -134,10 +137,10 @@ mod tests {
         assert_eq!(
             changed,
             vec![
-                Event::new_note_on_event(66, 0, 64, 127),
-                Event::new_note_off_event(33, 0, 64),
-                Event::new_note_on_event(20, 0, 64, 127),
-                Event::new_note_off_event(53, 0, 64),
+                Event::new_delta_note_on_event(66, 0, 64, 127),
+                Event::new_delta_note_off_event(33, 0, 64),
+                Event::new_delta_note_on_event(20, 0, 64, 127),
+                Event::new_delta_note_off_event(53, 0, 64),
             ]
         )
     }

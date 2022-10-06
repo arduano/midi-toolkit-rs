@@ -1,7 +1,7 @@
 use gen_iter::GenIter;
 
 use crate::{
-    events::MIDIEvent,
+    events::{MIDIDelta, MIDIEvent},
     grouped_multithreaded_merge,
     num::MIDINum,
     pipe,
@@ -9,16 +9,16 @@ use crate::{
     unwrap, yield_error,
 };
 
-struct SeqTime<T: MIDINum, E: MIDIEvent<T>, Err, I: Iterator<Item = Result<E, Err>> + Sized> {
+struct SeqTime<D: MIDINum, E: MIDIDelta<D>, Err, I: Iterator<Item = Result<E, Err>> + Sized> {
     iter: I,
-    time: T,
+    time: D,
     next: Option<E>,
 }
 
 /// Merge an array of event iterators together into one iterator.
 pub fn merge_events_array<
-    T: MIDINum,
-    E: MIDIEvent<T>,
+    D: MIDINum,
+    E: MIDIDelta<D>,
     Err,
     I: Iterator<Item = Result<E, Err>> + Sized,
 >(
@@ -44,7 +44,7 @@ pub fn merge_events_array<
             }
         }
 
-        let mut time = T::zero();
+        let mut time = D::zero();
         while seqences.len() > 0 {
             let len = seqences.len();
             let mut smallest_index = 0;
@@ -90,8 +90,8 @@ pub fn merge_events_array<
 
 /// Merge a pair of two different event iterators together into one iterator.
 pub fn merge_events<
-    T: MIDINum,
-    E: MIDIEvent<T>,
+    D: MIDINum,
+    E: MIDIDelta<D>,
     Err,
     I1: Iterator<Item = Result<E, Err>> + Sized,
     I2: Iterator<Item = Result<E, Err>> + Sized,
@@ -100,18 +100,18 @@ pub fn merge_events<
     iter2: I2,
 ) -> impl Iterator<Item = Result<E, Err>> {
     fn seq_from_iter<
-        T: MIDINum,
-        E: MIDIEvent<T>,
+        D: MIDINum,
+        E: MIDIDelta<D>,
         Err,
         I: Iterator<Item = Result<E, Err>> + Sized,
     >(
         mut iter: I,
-    ) -> Result<SeqTime<T, E, Err, I>, Err> {
+    ) -> Result<SeqTime<D, E, Err, I>, Err> {
         let first = iter.next();
         match first {
             None => Ok(SeqTime {
                 iter,
-                time: T::zero(),
+                time: D::zero(),
                 next: None,
             }),
             Some(e) => match e {
@@ -125,8 +125,8 @@ pub fn merge_events<
         }
     }
 
-    fn move_next<T: MIDINum, E: MIDIEvent<T>, Err, I: Iterator<Item = Result<E, Err>> + Sized>(
-        mut seq: &mut SeqTime<T, E, Err, I>,
+    fn move_next<D: MIDINum, E: MIDIDelta<D>, Err, I: Iterator<Item = Result<E, Err>> + Sized>(
+        mut seq: &mut SeqTime<D, E, Err, I>,
     ) -> Result<(), Err> {
         let next = seq.iter.next();
         let next = match next {
@@ -147,7 +147,7 @@ pub fn merge_events<
         let mut seq1 = unwrap!(seq_from_iter(iter1));
         let mut seq2 = unwrap!(seq_from_iter(iter2));
 
-        let mut time = T::zero();
+        let mut time = D::zero();
 
         macro_rules! yield_event {
             ($ev:ident, $time:expr) => {
@@ -194,8 +194,8 @@ pub fn merge_events<
 
 /// Group tracks into separate threads and merge them together
 pub fn grouped_multithreaded_merge_event_arrays<
-    T: 'static + MIDINum,
-    E: 'static + MIDIEvent<T> + Sync + Send,
+    D: 'static + MIDINum,
+    E: 'static + MIDIDelta<D> + Sync + Send,
     Err: 'static + Sync + Send,
     I: 'static + Iterator<Item = Result<E, Err>> + Sized + Sync + Send,
 >(

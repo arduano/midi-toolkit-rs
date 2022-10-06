@@ -12,5 +12,7 @@ mod stats;
 pub use stats::*;
 mod batched;
 pub use batched::*;
+mod delta;
+pub use delta::*;
 mod track;
 pub use track::*;

@@ -19,8 +19,8 @@ mod tests {
     #[should_panic]
     fn panic() {
         let events = vec![
-            Ok(Event::new_note_on_event(100.0f64, 0, 64, 127)),
-            Ok(Event::new_note_off_event(50.0f64, 0, 64)),
+            Ok(Event::new_delta_note_on_event(100.0f64, 0, 64, 127)),
+            Ok(Event::new_delta_note_off_event(50.0f64, 0, 64)),
             Err(()),
         ];
 
@@ -34,8 +34,8 @@ mod tests {
     #[test]
     fn no_panic() {
         let events: Vec<Result<_, ()>> = vec![
-            Ok(Event::new_note_on_event(100.0f64, 0, 64, 127)),
-            Ok(Event::new_note_off_event(50.0f64, 0, 64)),
+            Ok(Event::new_delta_note_on_event(100.0f64, 0, 64, 127)),
+            Ok(Event::new_delta_note_off_event(50.0f64, 0, 64)),
         ];
 
         let changed = pipe! {
@@ -47,8 +47,8 @@ mod tests {
         assert_eq!(
             changed,
             vec![
-                Event::new_note_on_event(100.0f64, 0, 64, 127),
-                Event::new_note_off_event(50.0f64, 0, 64),
+                Event::new_delta_note_on_event(100.0f64, 0, 64, 127),
+                Event::new_delta_note_off_event(50.0f64, 0, 64),
             ]
         )
     }

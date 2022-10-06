@@ -1,4 +1,7 @@
-use crate::{events::MIDIEvent, num::MIDINum};
+use crate::{
+    events::{MIDIDelta, MIDIEvent},
+    num::MIDINum,
+};
 
 /// Scale each delta time of an event sequence.
 ///
@@ -8,10 +11,10 @@ use crate::{events::MIDIEvent, num::MIDINum};
 ///use midi_toolkit::{events::Event, pipe, sequence::{event::scale_event_time, to_vec_result, wrap_ok}};
 ///
 ///let events = vec![
-///    Event::new_note_on_event(100.0f64, 0, 64, 127),
-///    Event::new_note_off_event(50.0f64, 0, 64),
-///    Event::new_note_on_event(30.0f64, 0, 64, 127),
-///    Event::new_note_off_event(80.0f64, 0, 64),
+///    Event::new_delta_note_on_event(100.0f64, 0, 64, 127),
+///    Event::new_delta_note_off_event(50.0f64, 0, 64),
+///    Event::new_delta_note_on_event(30.0f64, 0, 64, 127),
+///    Event::new_delta_note_off_event(80.0f64, 0, 64),
 ///];
 ///
 ///let changed = pipe! {
@@ -24,21 +27,21 @@ use crate::{events::MIDIEvent, num::MIDINum};
 ///assert_eq!(
 ///    changed,
 ///    vec![
-///        Event::new_note_on_event(150.0f64, 0, 64, 127),
-///        Event::new_note_off_event(75.0f64, 0, 64),
-///        Event::new_note_on_event(45.0f64, 0, 64, 127),
-///        Event::new_note_off_event(120.0f64, 0, 64),
+///        Event::new_delta_note_on_event(150.0f64, 0, 64, 127),
+///        Event::new_delta_note_off_event(75.0f64, 0, 64),
+///        Event::new_delta_note_on_event(45.0f64, 0, 64, 127),
+///        Event::new_delta_note_off_event(120.0f64, 0, 64),
 ///    ]
 ///)
 ///```
 pub fn scale_event_time<
-    T: MIDINum,
-    E: MIDIEvent<T>,
+    D: MIDINum,
+    E: MIDIDelta<D>,
     Err,
     I: Iterator<Item = Result<E, Err>> + Sized,
 >(
     iter: I,
-    multiplier: T,
+    multiplier: D,
 ) -> impl Iterator<Item = Result<E, Err>> {
     iter.map(move |e| {
         let mut e = e?;
@@ -59,10 +62,10 @@ mod tests {
     #[test]
     fn time_change() {
         let events = vec![
-            Event::new_note_on_event(100.0f64, 0, 64, 127),
-            Event::new_note_off_event(50.0f64, 0, 64),
-            Event::new_note_on_event(30.0f64, 0, 64, 127),
-            Event::new_note_off_event(80.0f64, 0, 64),
+            Event::new_delta_note_on_event(100.0f64, 0, 64, 127),
+            Event::new_delta_note_off_event(50.0f64, 0, 64),
+            Event::new_delta_note_on_event(30.0f64, 0, 64, 127),
+            Event::new_delta_note_off_event(80.0f64, 0, 64),
         ];
 
         let changed = pipe! {
@@ -75,10 +78,10 @@ mod tests {
         assert_eq!(
             changed,
             vec![
-                Event::new_note_on_event(150.0f64, 0, 64, 127),
-                Event::new_note_off_event(75.0f64, 0, 64),
-                Event::new_note_on_event(45.0f64, 0, 64, 127),
-                Event::new_note_off_event(120.0f64, 0, 64),
+                Event::new_delta_note_on_event(150.0f64, 0, 64, 127),
+                Event::new_delta_note_off_event(75.0f64, 0, 64),
+                Event::new_delta_note_on_event(45.0f64, 0, 64, 127),
+                Event::new_delta_note_off_event(120.0f64, 0, 64),
             ]
         )
     }
@@ -86,10 +89,10 @@ mod tests {
     #[test]
     fn time_change_ints() {
         let events = vec![
-            Event::new_note_on_event(100, 0, 64, 127),
-            Event::new_note_off_event(50, 0, 64),
-            Event::new_note_on_event(30, 0, 64, 127),
-            Event::new_note_off_event(80, 0, 64),
+            Event::new_delta_note_on_event(100, 0, 64, 127),
+            Event::new_delta_note_off_event(50, 0, 64),
+            Event::new_delta_note_on_event(30, 0, 64, 127),
+            Event::new_delta_note_off_event(80, 0, 64),
         ];
 
         let changed = pipe! {
@@ -103,10 +106,10 @@ mod tests {
         assert_eq!(
             changed,
             vec![
-                Event::new_note_on_event(200, 0, 64, 127),
-                Event::new_note_off_event(100, 0, 64),
-                Event::new_note_on_event(60, 0, 64, 127),
-                Event::new_note_off_event(160, 0, 64),
+                Event::new_delta_note_on_event(200, 0, 64, 127),
+                Event::new_delta_note_off_event(100, 0, 64),
+                Event::new_delta_note_on_event(60, 0, 64, 127),
+                Event::new_delta_note_off_event(160, 0, 64),
             ]
         )
     }

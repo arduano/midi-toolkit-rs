@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use midi_toolkit::{
-    events::{Event, MIDIEvent},
+    events::{Event, MIDIEvent, MIDIEventEnum},
     io::MIDIFile,
     num::MIDINum,
     pipe,
@@ -21,17 +21,23 @@ pub fn boxed<
 
 pub fn main() {
     println!("Opening midi...");
-    let file = MIDIFile::open("F:/Fast MIDIs/The Nuker 4 F2.mid", None).unwrap();
+    let file = MIDIFile::open("D:/Midis/tau2.5.9.mid", None).unwrap();
     let now = Instant::now();
     let mut nc: u64 = 0;
 
     println!("Creating parsers...");
-    let merged = pipe!(file.iter_all_events_merged()|>unwrap_items());
+    let merged = pipe!(file.iter_all_track_events_merged()|>unwrap_items());
     println!("Parsing midi...");
 
     for e in merged {
-        match e {
-            Event::NoteOn(_) => nc += 1,
+        match e.as_event() {
+            Event::NoteOn(_) => {
+                dbg!(e);
+                nc += 1;
+                if nc > 10 {
+                    break;
+                }
+            }
             _ => {}
         }
     }

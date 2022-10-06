@@ -3,11 +3,13 @@ use std::{ops::Deref, sync::Arc, time::Duration};
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 
 use crate::{
-    events::{Event, MIDIEvent, MIDIEventEnum, TempoEvent},
+    events::{Event, MIDIDelta, MIDIEvent, MIDIEventEnum, TempoEvent},
     num::MIDINum,
     pipe,
     sequence::{event::merge_events_array, to_vec, to_vec_result, wrap_ok},
 };
+
+use super::Delta;
 
 struct ElementCountDebug(&'static str, usize);
 
@@ -19,12 +21,12 @@ impl std::fmt::Debug for ElementCountDebug {
 
 /// A struct to hold the statistics of a sequence.
 #[derive(Clone)]
-pub struct ChannelStatistics<T: MIDINum> {
+pub struct ChannelStatistics<D: MIDINum> {
     note_on_count: u64,
     note_off_count: u64,
     total_event_count: u64,
-    total_length_ticks: T,
-    tempo_events: Arc<[TempoEvent<T>]>,
+    total_length_ticks: D,
+    tempo_events: Arc<[Delta<D, TempoEvent>]>,
 }
 
 impl<T: MIDINum> ChannelStatistics<T> {
@@ -117,7 +119,7 @@ impl<T: MIDINum> std::fmt::Debug for ChannelGroupStatistics<T> {
 }
 
 pub fn tempo_sequence_get_duration<T: MIDINum>(
-    tempos: &[TempoEvent<T>],
+    tempos: &[Delta<T, TempoEvent>],
     ppq: u16,
     ticks: T,
 ) -> Duration {
@@ -144,19 +146,14 @@ pub fn tempo_sequence_get_duration<T: MIDINum>(
 ///
 /// ❗ **NOTE:** Time in seconds may be inaccurate due to the channel not having the MIDI's tempo events!
 /// Make sure the iterator contains all of the MIDI's tempo events to get the accurate length in seconds.
-pub fn get_channel_statistics<
-    T: MIDINum,
-    E: MIDIEventEnum<T>,
-    Err,
-    I: Iterator<Item = Result<E, Err>>,
->(
-    iter: I,
-) -> Result<ChannelStatistics<T>, Err> {
+pub fn get_channel_statistics<D: MIDINum, E: MIDIEventEnum + MIDIDelta<D>, Err>(
+    iter: impl Iterator<Item = Result<E, Err>>,
+) -> Result<ChannelStatistics<D>, Err> {
     let mut note_on_count = 0;
     let mut note_off_count = 0;
     let mut total_event_count = 0;
-    let mut total_length_ticks = T::zero();
-    let mut ticks_since_last_tempo = T::zero();
+    let mut total_length_ticks = D::zero();
+    let mut ticks_since_last_tempo = D::zero();
 
     let mut tempo_events = Vec::new();
 
@@ -169,10 +166,10 @@ pub fn get_channel_statistics<
             Event::NoteOn(_) => note_on_count += 1,
             Event::NoteOff(_) => note_off_count += 1,
             Event::Tempo(t) => {
-                let mut ev = *t.clone();
-                ev.delta = ticks_since_last_tempo;
-                tempo_events.push(ev);
-                ticks_since_last_tempo = T::zero();
+                let ev = *t.clone();
+                let tempo_delta = Delta::new(ticks_since_last_tempo, ev);
+                tempo_events.push(tempo_delta);
+                ticks_since_last_tempo = D::zero();
             }
             _ => (),
         }
@@ -193,13 +190,13 @@ pub fn get_channel_statistics<
 /// **NOTE:** This uses `rayon` for the threadpool, if you want to use your own rayon threadpool instance then
 /// install it before calling this function.
 pub fn get_channels_array_statistics<
-    T: MIDINum,
-    E: MIDIEventEnum<T>,
+    D: MIDINum,
+    E: MIDIEventEnum + MIDIDelta<D>,
     Err: Send + Sync,
     I: Iterator<Item = Result<E, Err>> + Sized + Send + Sync,
 >(
     iters: Vec<I>,
-) -> Result<ChannelGroupStatistics<T>, Err> {
+) -> Result<ChannelGroupStatistics<D>, Err> {
     let pool = iters
         .into_par_iter()
         .map(|iter| get_channel_statistics(iter));
@@ -215,13 +212,13 @@ pub fn get_channels_array_statistics<
 
     let merge = pipe!(tempo_iterators|>merge_events_array()|>to_vec_result().unwrap());
 
-    let tempo_events: Arc<[TempoEvent<T>]> = merge.into();
+    let tempo_events: Arc<[Delta<D, TempoEvent>]> = merge.into();
 
     for c in channels.iter_mut() {
         c.tempo_events = tempo_events.clone();
     }
 
-    let mut max_tick_length = T::zero();
+    let mut max_tick_length = D::zero();
     for c in channels.iter() {
         if c.total_length_ticks > max_tick_length {
             max_tick_length = c.total_length_ticks;

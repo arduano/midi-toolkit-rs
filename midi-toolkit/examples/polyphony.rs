@@ -30,10 +30,6 @@ pub fn main() {
     let mut max_poly: u64 = 0;
 
     for e in merged {
-        if let Some(key) = e.key() {
-            println!("{}", key);
-        }
-
         match e {
             Event::NoteOn(_) => {
                 poly += 1;
