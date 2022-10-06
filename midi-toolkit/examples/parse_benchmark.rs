@@ -33,7 +33,7 @@ fn do_run(name: &str, repeats: i32, run: impl Fn() -> u64) {
 }
 
 fn main() {
-    let filename = "F:/Fast MIDIs/The Nuker 3 F3.mid";
+    let filename = "D:/Midis/toilet story 3 2020 ver 3840 black with tempo.mid";
     let repeats = 4;
 
     println!("Opening midi...");

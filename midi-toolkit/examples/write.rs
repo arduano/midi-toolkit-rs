@@ -5,19 +5,11 @@ use midi_toolkit::{
     io::{MIDIFile, MIDIWriter},
     num::MIDINum,
     pipe,
-    sequence::{event::merge_events_array, events_to_notes, notes_to_events, to_vec, unwrap_items},
+    sequence::{
+        event::{merge_events_array},
+        events_to_notes, notes_to_events, to_vec, unwrap_items,
+    },
 };
-
-pub fn boxed<
-    T: MIDINum,
-    E: MIDIEvent<T>,
-    Err,
-    I: 'static + Iterator<Item = Result<E, Err>> + Sized,
->(
-    iter: I,
-) -> Box<impl Iterator<Item = Result<E, Err>>> {
-    Box::new(iter)
-}
 
 pub fn main() {
     println!("Opening midi...");
@@ -30,12 +22,11 @@ pub fn main() {
     {
         let mut track_writer = writer.open_next_track();
         // let merged = pipe!(file.iter_all_tracks()|>to_vec()|>merge_events_array()|>unwrap_items());
-        let converted = file
-            .iter_all_tracks()
-            .map(|track| pipe!(track|>events_to_notes()|>notes_to_events()));
+        let converted = file.iter_all_tracks();
+        // .map(|track| pipe!(track|>events_to_notes()|>notes_to_events()));
         let merged = pipe!(converted|>to_vec()|>merge_events_array()|>unwrap_items());
         for e in merged {
-            match e {
+            match *e {
                 Event::NoteOn(_) => nc += 1,
                 _ => {}
             }

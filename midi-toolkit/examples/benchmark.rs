@@ -44,7 +44,7 @@ fn main() {
     let mut nc: u64 = 0;
     for track in loaded_tracks.iter() {
         for e in track {
-            match e {
+            match **e {
                 Event::NoteOn(_) => nc += 1,
                 _ => {}
             }

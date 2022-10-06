@@ -8,17 +8,6 @@ use midi_toolkit::{
     sequence::{event::merge_events_array, to_vec, unwrap_items},
 };
 
-pub fn boxed<
-    T: MIDINum,
-    E: MIDIEvent<T>,
-    Err,
-    I: 'static + Iterator<Item = Result<E, Err>> + Sized,
->(
-    iter: I,
-) -> Box<impl Iterator<Item = Result<E, Err>>> {
-    Box::new(iter)
-}
-
 pub fn main() {
     println!("Opening midi...");
     let file = MIDIFile::open("D:/Midis/tau2.5.9.mid", None).unwrap();
@@ -39,11 +28,11 @@ pub fn main() {
     let merged = pipe!(file.iter_all_tracks()|>to_vec()|>merge_events_array()|>unwrap_items());
 
     for e in merged {
-        match e {
+        match *e {
             Event::NoteOn(_) => nc += 1,
             _ => {}
         }
-        let delta = e.delta();
+        let delta = e.delta;
         if delta > 184467440737 {
             dbg!(e);
         }

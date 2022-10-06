@@ -32,8 +32,8 @@ fn main() {
     let now = Instant::now();
     let mut time = 0.0;
     for e in merged {
-        if e.delta() != 0.0 {
-            time += e.delta();
+        if e.delta != 0.0 {
+            time += e.delta;
             let diff = time - now.elapsed().as_secs_f64();
             if diff > 0.0 {
                 thread::sleep(Duration::from_secs_f64(diff));

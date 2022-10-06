@@ -8,17 +8,6 @@ use midi_toolkit::{
     sequence::unwrap_items,
 };
 
-pub fn boxed<
-    T: MIDINum,
-    E: MIDIEvent<T>,
-    Err,
-    I: 'static + Iterator<Item = Result<E, Err>> + Sized,
->(
-    iter: I,
-) -> Box<impl Iterator<Item = Result<E, Err>>> {
-    Box::new(iter)
-}
-
 pub fn main() {
     println!("Opening midi...");
     let file = MIDIFile::open("D:/Midis/tau2.5.9.mid", None).unwrap();
