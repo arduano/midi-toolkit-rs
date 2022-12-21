@@ -1,3 +1,5 @@
+use thiserror::Error;
+
 #[derive(Debug)]
 pub enum MIDILoadError {
     CorruptChunks,
@@ -11,26 +13,32 @@ impl From<std::io::Error> for MIDILoadError {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum MIDIParseError {
     CorruptEvent,
     UnexpectedTrackEnd,
-    FilesystemError(std::io::Error),
+    FilesystemError(#[from] std::io::Error),
 }
 
-impl From<std::io::Error> for MIDIParseError {
-    fn from(e: std::io::Error) -> Self {
-        MIDIParseError::FilesystemError(e)
+impl std::fmt::Display for MIDIParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MIDIParseError::CorruptEvent => write!(f, "Corrupt event"),
+            MIDIParseError::UnexpectedTrackEnd => write!(f, "Unexpected track end"),
+            MIDIParseError::FilesystemError(e) => write!(f, "Filesystem error: {}", e),
+        }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum MIDIWriteError {
-    FilesystemError(std::io::Error),
+    FilesystemError(#[from] std::io::Error),
 }
 
-impl From<std::io::Error> for MIDIWriteError {
-    fn from(e: std::io::Error) -> Self {
-        MIDIWriteError::FilesystemError(e)
+impl std::fmt::Display for MIDIWriteError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MIDIWriteError::FilesystemError(e) => write!(f, "Filesystem error: {}", e),
+        }
     }
 }

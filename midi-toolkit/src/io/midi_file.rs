@@ -2,6 +2,7 @@ use std::{
     fs::File,
     io::{Read, Seek},
     marker::PhantomData,
+    path::Path,
 };
 
 use crate::{
@@ -204,7 +205,7 @@ impl<T: 'static + MIDIReader<R>, R: 'static + TrackReader> MIDIFile<T, R> {
 
 impl MIDIFile<DiskReader, DiskTrackReader> {
     pub fn open(
-        filename: &str,
+        filename: impl AsRef<Path>,
         read_progress: Option<&mut dyn FnMut(u32)>,
     ) -> Result<Self, MIDILoadError> {
         let reader = File::open(filename)?;
@@ -216,7 +217,7 @@ impl MIDIFile<DiskReader, DiskTrackReader> {
 
 impl MIDIFile<RAMReader, FullRamTrackReader> {
     pub fn open_in_ram(
-        filename: &str,
+        filename: impl AsRef<Path>,
         read_progress: Option<&mut dyn FnMut(u32)>,
     ) -> Result<Self, MIDILoadError> {
         let reader = File::open(filename)?;
