@@ -43,7 +43,7 @@ impl<D: MIDINum, E: MIDIDelta<D>, Err, I: Iterator<Item = Result<E, Err>> + Size
                     let old_next = std::mem::replace(next, iter_next);
                     Ok(Some(old_next))
                 }
-                Some(Err(e)) => return Err(e),
+                Some(Err(e)) => Err(e),
                 None => {
                     let old = std::mem::replace(self, Sequence::Empty);
 
@@ -93,10 +93,7 @@ impl<D: MIDINum, E: MIDIDelta<D>, Err, I: Iterator<Item = Result<E, Err>> + Size
     fn time(&self) -> Option<D> {
         match self {
             BinaryCellState::Sequence(seq) => seq.time(),
-            BinaryCellState::Item { item } => match item {
-                Some(item) => Some(item.delta()),
-                None => None,
-            },
+            BinaryCellState::Item { item } => item.as_ref().map(|item| item.delta()),
         }
     }
 }
@@ -188,7 +185,7 @@ impl<D: MIDINum, E: MIDIDelta<D>, Err, I: Iterator<Item = Result<E, Err>> + Size
         };
 
         let item = match current {
-            BinaryCellState::Sequence(seq) => return Ok(seq.next()?),
+            BinaryCellState::Sequence(seq) => return seq.next(),
 
             // Item nodes are handled below
             BinaryCellState::Item { item } => item,

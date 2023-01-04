@@ -59,7 +59,7 @@ pub fn threaded_buffer<
                 }
             }
 
-            if vector.len() > 0 {
+            if !vector.is_empty() {
                 forward_tx.send(vector).ok();
             } else {
                 break;
@@ -110,14 +110,14 @@ pub fn channels_into_threadpool<
                 .send(ReadCommand {
                     vector: VecDeque::with_capacity(buffer_size),
                     response_sender: tx.clone(),
-                    iter_id: iter_id,
+                    iter_id,
                 })
                 .ok();
         }
 
         output_iters.push(GenIter(move || {
             for mut received in rx.into_iter() {
-                if received.len() == 0 {
+                if received.is_empty() {
                     break;
                 }
 
@@ -129,7 +129,7 @@ pub fn channels_into_threadpool<
                     .send(ReadCommand {
                         vector: received,
                         response_sender: tx.clone(),
-                        iter_id: iter_id,
+                        iter_id,
                     })
                     .ok();
             }

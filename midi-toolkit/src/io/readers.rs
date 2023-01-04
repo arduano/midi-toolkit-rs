@@ -138,7 +138,7 @@ impl RAMReader {
                 }
 
                 let mut bytes = vec![0; length as usize];
-                reader.read(&mut bytes)?;
+                reader.read_exact(&mut bytes)?;
                 Ok(RAMReader {
                     bytes: Arc::new(bytes),
                     pos: 0,
@@ -166,6 +166,9 @@ pub trait MIDIReader<T: TrackReader>: Debug {
     }
 
     fn len(&self) -> u64;
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 
     fn open_reader(&self, start: u64, len: u64) -> T;
 }
@@ -199,9 +202,7 @@ impl MIDIReader<FullRamTrackReader> for RAMReader {
             return Err(MIDILoadError::CorruptChunks);
         }
 
-        for i in 0..count {
-            bytes[i] = self.bytes[pos as usize + i];
-        }
+        bytes[..].clone_from_slice(&self.bytes[pos as usize..pos as usize + count]);
 
         Ok(bytes)
     }
@@ -216,6 +217,7 @@ pub trait TrackReader: Send + Sync {
     fn pos(&self) -> u64;
 }
 
+#[allow(clippy::type_complexity)]
 pub struct DiskTrackReader {
     reader: Arc<BufferReadProvider>,
     start: u64,                  // Relative to midi
@@ -319,10 +321,10 @@ impl DiskTrackReader {
         let send = Arc::new(send);
 
         let mut reader = DiskTrackReader {
-            reader: reader,
-            start: start,
+            reader,
+            start,
             pos: start,
-            len: len as u64,
+            len,
             buffer: None,
             buffer_start: 0,
             buffer_pos: 0,
@@ -352,10 +354,10 @@ impl DiskTrackReader {
         let send = Arc::new(send);
 
         let mut reader = DiskTrackReader {
-            reader: reader,
-            start: start,
+            reader,
+            start,
             pos: start + pos,
-            len: len as u64,
+            len,
             buffer: None,
             buffer_start: 0,
             buffer_pos: 0,

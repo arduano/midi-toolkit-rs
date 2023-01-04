@@ -22,15 +22,14 @@ pub fn main() {
         // .map(|track| pipe!(track|>events_to_notes()|>notes_to_events()));
         let merged = pipe!(converted|>to_vec()|>merge_events_array()|>unwrap_items());
         for e in merged {
-            match *e {
-                Event::NoteOn(_) => nc += 1,
-                _ => {}
+            if let Event::NoteOn(_) = *e {
+                nc += 1
             }
             track_writer.write_event(e).unwrap();
         }
     }
 
-    println!("Finished parsing midi, found {} notes", nc);
+    println!("Finished parsing midi, found {nc} notes");
     println!("Elapsed {:?}", now.elapsed());
     println!(
         "Notes/second {}",

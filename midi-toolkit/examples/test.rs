@@ -18,19 +18,16 @@ pub fn main() {
     println!("Parsing midi...");
 
     for e in merged {
-        match e.as_event() {
-            Event::NoteOn(_) => {
-                dbg!(e);
-                nc += 1;
-                if nc > 10 {
-                    break;
-                }
+        if let Event::NoteOn(_) = e.as_event() {
+            dbg!(e);
+            nc += 1;
+            if nc > 10 {
+                break;
             }
-            _ => {}
         }
     }
 
-    println!("Finished parsing midi, found {} notes", nc);
+    println!("Finished parsing midi, found {nc} notes");
     println!("Elapsed {:?}", now.elapsed());
     println!(
         "Notes/second {}",

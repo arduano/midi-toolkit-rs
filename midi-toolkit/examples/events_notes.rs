@@ -27,9 +27,8 @@ pub fn main() {
     let merged = pipe!(file.iter_all_tracks()|>to_vec()|>merge_events_array()|>unwrap_items());
 
     for e in merged {
-        match *e {
-            Event::NoteOn(_) => nc += 1,
-            _ => {}
+        if let Event::NoteOn(_) = *e {
+            nc += 1
         }
         let delta = e.delta;
         if delta > 184467440737 {
@@ -37,7 +36,7 @@ pub fn main() {
         }
     }
 
-    println!("Finished parsing midi, found {} notes", nc);
+    println!("Finished parsing midi, found {nc} notes");
     println!("Elapsed {:?}", now.elapsed());
     println!(
         "Notes/second {}",

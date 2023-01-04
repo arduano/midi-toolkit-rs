@@ -35,6 +35,7 @@ impl<T> Shared<T> {
         Self(Rc::new(UnsafeCell::new(val)))
     }
 
+    #[allow(clippy::mut_from_ref)]
     fn get(&self) -> &mut T {
         unsafe { &mut *self.0.get() }
     }
@@ -96,7 +97,7 @@ impl<T: MIDINum> NoteQueue<T> {
     #[inline(always)]
     fn end_all(&mut self, end: T) {
         for key in self.keys.iter_mut() {
-            for note in key.into_iter() {
+            for note in key.iter_mut() {
                 let note = note.get();
                 note.ended = true;
                 note.note.len = end - note.note.start;
@@ -112,7 +113,7 @@ impl<T: MIDINum> NoteQueue<T> {
                 return Some(self.queue.pop_front().unwrap().into_inner().note);
             }
         }
-        return None;
+        None
     }
 }
 

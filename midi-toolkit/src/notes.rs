@@ -1,5 +1,6 @@
 use crate::num::MIDINum;
 
+#[allow(clippy::len_without_is_empty)]
 pub trait MIDINote<T: MIDINum>: std::fmt::Debug {
     fn start(&self) -> T;
     fn start_mut(&mut self) -> &mut T;

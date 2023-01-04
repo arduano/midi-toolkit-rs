@@ -52,19 +52,6 @@ impl<D: MIDINum, T> Delta<D, EventBatch<T>> {
 }
 
 impl<D: MIDINum, T> Delta<D, Track<EventBatch<T>>> {
-    pub fn into_iter(self) -> impl Iterator<Item = Delta<D, Track<T>>> {
-        let mut delta = self.delta;
-        let track = self.event.track;
-        self.event
-            .inner_event()
-            .into_iter_inner()
-            .map(move |event| {
-                let event = Delta::new(delta, Track::new(event, track));
-                delta = D::zero();
-                event
-            })
-    }
-
     pub fn iter_events(&self) -> impl Iterator<Item = Delta<D, Track<&T>>> {
         let mut delta = self.delta;
         let track = self.event.track;
@@ -76,6 +63,24 @@ impl<D: MIDINum, T> Delta<D, Track<EventBatch<T>>> {
     }
 }
 
+impl<D: MIDINum, T> IntoIterator for Delta<D, Track<EventBatch<T>>> {
+    type Item = Delta<D, Track<T>>;
+    type IntoIter = impl Iterator<Item = Delta<D, Track<T>>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        let mut delta = self.delta;
+        let track = self.event.track;
+        self.event
+            .inner_event()
+            .into_iter_inner()
+            .map(move |event| {
+                let event = Delta::new(delta, Track::new(event, track));
+                delta = D::zero();
+                event
+            })
+    }
+}
+
 impl<E: MIDIEventEnum> BatchTempo for EventBatch<E> {
     fn inner_tempo(&self) -> Option<u32> {
         for e in self.events.iter().rev() {
@@ -83,7 +88,7 @@ impl<E: MIDIEventEnum> BatchTempo for EventBatch<E> {
                 return Some(t);
             }
         }
-        return None;
+        None
     }
 
     fn without_tempo(self) -> Option<Self> {
@@ -94,10 +99,10 @@ impl<E: MIDIEventEnum> BatchTempo for EventBatch<E> {
             .collect::<Vec<_>>();
 
         if new.is_empty() {
-            return None;
+            None
+        } else {
+            Some(Self::new(new))
         }
-
-        Some(Self::new(new))
     }
 }
 
@@ -109,14 +114,14 @@ pub fn convert_events_into_batches<D: MIDINum, E, Err>(
         for e in iter {
             let e = unwrap!(e);
             if e.delta() > D::zero() {
-                if next_batch.events.len() > 0 {
+                if !next_batch.events.is_empty() {
                     yield Ok(next_batch);
                 }
                 next_batch = Delta::new(e.delta(), EventBatch::new(Vec::new()));
             }
             next_batch.events.push(e.event);
         }
-        if next_batch.events.len() > 0 {
+        if !next_batch.events.is_empty() {
             yield Ok(next_batch);
         }
     })

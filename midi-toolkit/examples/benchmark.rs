@@ -44,13 +44,12 @@ fn main() {
     let mut nc: u64 = 0;
     for track in loaded_tracks.iter() {
         for e in track {
-            match **e {
-                Event::NoteOn(_) => nc += 1,
-                _ => {}
+            if let Event::NoteOn(_) = **e {
+                nc += 1
             }
         }
     }
-    println!("Note count: {}", nc);
+    println!("Note count: {nc}");
 
     do_run("Parse all tracks individually", repeats, || {
         for track in file.iter_all_tracks() {

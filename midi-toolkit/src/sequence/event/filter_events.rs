@@ -103,9 +103,8 @@ where
     E: MIDIEventEnum + MIDIDelta<D>,
     I: Iterator<Item = Result<E, Err>> + Sized,
 {
-    filter_events(iter, |e| match e.as_event() {
-        Event::NoteOn { .. } | Event::NoteOff { .. } => true,
-        _ => false,
+    filter_events(iter, |e| {
+        matches!(e.as_event(), Event::NoteOn { .. } | Event::NoteOff { .. })
     })
 }
 
@@ -147,8 +146,7 @@ where
     E: MIDIEventEnum + MIDIDelta<D>,
     I: Iterator<Item = Result<E, Err>> + Sized,
 {
-    filter_events(iter, |e| match e.as_event() {
-        Event::NoteOn { .. } | Event::NoteOff { .. } => false,
-        _ => true,
+    filter_events(iter, |e| {
+        !matches!(e.as_event(), Event::NoteOn { .. } | Event::NoteOff { .. })
     })
 }
