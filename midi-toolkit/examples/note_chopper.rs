@@ -32,7 +32,7 @@ fn chop_note(note: Note<u64>, chop_size: u64) -> impl Iterator<Item = Note<u64>>
 }
 
 fn main() {
-    let file = MIDIFile::open("/run/media/d/Midis/tau2.5.9.mid", None).unwrap();
+    let file = MIDIFile::open("D:/Midis/tau2.5.9.mid", None).unwrap();
 
     let chop_size = file.ppq() as u64 / 16;
 
