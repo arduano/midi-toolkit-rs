@@ -1,4 +1,4 @@
-use super::{events::*, BatchTempo};
+use super::{event_variants::*, BatchTempo};
 use super::{MIDIEvent, SerializeEvent};
 use crate::io::MIDIWriteError;
 
