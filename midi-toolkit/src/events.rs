@@ -5,6 +5,8 @@ pub use event::Event;
 pub use events::*;
 
 mod event;
+
+#[allow(clippy::module_inception)]
 mod events;
 
 pub fn encode_var_length_value(mut val: u64) -> Vec<u8> {
@@ -13,7 +15,7 @@ pub fn encode_var_length_value(mut val: u64) -> Vec<u8> {
     loop {
         let v = (val & 0x7F) as u8 | added;
         vec.push(v);
-        val = val >> 7;
+        val >>= 7;
         added = 0x80;
         if val == 0 {
             break;
@@ -134,7 +136,7 @@ mod tests {
             let mut compressed: u32 = 0x00;
             let mut offset: u32 = 0;
             for v in event_bytes.iter() {
-                compressed = compressed | ((*v as u32) << offset);
+                compressed |= (*v as u32) << offset;
                 offset += 8;
             }
             assert_eq!(serialized, compressed);

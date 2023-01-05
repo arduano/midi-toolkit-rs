@@ -112,7 +112,7 @@ impl<D: MIDINum, E: BatchTempo> BatchTempo for Delta<D, E> {
 
 impl<D: MIDINum, E: SerializeEvent> SerializeEvent for Delta<D, E> {
     fn serialize_event<T: Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
-        Ok(self.event.serialize_event(buf)?)
+        self.event.serialize_event(buf)
     }
 }
 

@@ -25,7 +25,7 @@ impl std::fmt::Display for MIDIParseError {
         match self {
             MIDIParseError::CorruptEvent => write!(f, "Corrupt event"),
             MIDIParseError::UnexpectedTrackEnd => write!(f, "Unexpected track end"),
-            MIDIParseError::FilesystemError(e) => write!(f, "Filesystem error: {}", e),
+            MIDIParseError::FilesystemError(e) => write!(f, "Filesystem error: {e}"),
         }
     }
 }
@@ -38,7 +38,7 @@ pub enum MIDIWriteError {
 impl std::fmt::Display for MIDIWriteError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            MIDIWriteError::FilesystemError(e) => write!(f, "Filesystem error: {}", e),
+            MIDIWriteError::FilesystemError(e) => write!(f, "Filesystem error: {e}"),
         }
     }
 }

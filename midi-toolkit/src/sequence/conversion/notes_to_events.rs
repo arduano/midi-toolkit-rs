@@ -21,7 +21,7 @@ pub fn notes_to_events<D: MIDINum, N: MIDINote<D>, Err>(
                 if e.delta <= note.start() {
                     let mut e = note_offs.pop_front().unwrap();
                     let time = e.delta;
-                    e.delta = e.delta - prev_time;
+                    e.delta -= prev_time;
                     prev_time = time;
                     yield Ok(e);
                 } else {
@@ -41,7 +41,7 @@ pub fn notes_to_events<D: MIDINum, N: MIDINote<D>, Err>(
             let time = note.end();
             let off = Event::new_delta_note_off_event(time, note.channel(), note.key());
 
-            if note_offs.len() == 0 {
+            if note_offs.is_empty() {
                 note_offs.push_back(off);
             } else {
                 // binary search
@@ -60,24 +60,18 @@ pub fn notes_to_events<D: MIDINum, N: MIDINote<D>, Err>(
                         if pos == 0 || note_offs[pos - 1].delta < time {
                             note_offs.insert(pos, off);
                             break;
+                        } else if jump > pos {
+                            pos = 0;
                         } else {
-                            if jump > pos {
-                                pos = 0;
-                            } else {
-                                pos -= jump;
-                            }
+                            pos -= jump;
                         }
+                    } else if pos == len - 1 {
+                        note_offs.push_back(off);
+                        break;
+                    } else if jump >= len - pos {
+                        pos = len - 1;
                     } else {
-                        if pos == len - 1 {
-                            note_offs.push_back(off);
-                            break;
-                        } else {
-                            if jump >= len - pos {
-                                pos = len - 1;
-                            } else {
-                                pos += jump;
-                            }
-                        }
+                        pos += jump;
                     }
 
                     jump /= 2;
@@ -87,7 +81,7 @@ pub fn notes_to_events<D: MIDINum, N: MIDINote<D>, Err>(
 
         while let Some(mut e) = note_offs.pop_front() {
             let time = e.delta;
-            e.delta = e.delta - prev_time;
+            e.delta -= prev_time;
             prev_time = time;
             yield Ok(e);
         }

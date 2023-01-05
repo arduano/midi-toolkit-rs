@@ -50,7 +50,7 @@ fn main() {
     do_run("Parse tracks in parallel", repeats, || {
         let tracks = file.iter_all_tracks().collect();
         let stats = get_channels_array_statistics(tracks).unwrap();
-        return stats.note_count();
+        stats.note_count()
     });
 
     do_run("Iter event batches merged", repeats, || {
@@ -66,14 +66,13 @@ fn main() {
         let mut note_count = 0;
         for batch in merged {
             for e in batch.into_iter() {
-                match e.as_event() {
-                    Event::NoteOn(_) => note_count += 1,
-                    _ => {}
+                if let Event::NoteOn(_) = e.as_event() {
+                    note_count += 1
                 }
             }
         }
 
-        return note_count;
+        note_count
     });
 
     // do_run("Merge all tracks together while parsing", repeats, || {

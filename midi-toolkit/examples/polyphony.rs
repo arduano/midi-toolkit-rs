@@ -30,6 +30,6 @@ pub fn main() {
         }
     }
 
-    println!("Finished parsing midi, found {} polyphony", max_poly);
+    println!("Finished parsing midi, found {max_poly} polyphony");
     println!("Elapsed {:?}", now.elapsed());
 }

@@ -102,7 +102,7 @@ impl<T: 'static + MIDIReader<R>, R: 'static + TrackReader> MIDIFile<T, R> {
             )
         };
 
-        let mut track_count = 0 as u32;
+        let mut track_count = 0;
         let mut track_positions = Vec::<TrackPos>::new();
         while pos != reader.len() {
             let len = read_header(&reader, pos, "MTrk")?;
@@ -163,8 +163,7 @@ impl<T: 'static + MIDIReader<R>, R: 'static + TrackReader> MIDIFile<T, R> {
             .map(convert_events_into_batches)
             .collect();
         let batched_tracks_threaded = channels_into_threadpool(batched_tracks, 10);
-        let merged_batches = merge_events_array(batched_tracks_threaded);
-        merged_batches
+        merge_events_array(batched_tracks_threaded)
     }
 
     pub fn iter_all_track_events_merged_batches(
@@ -177,8 +176,7 @@ impl<T: 'static + MIDIReader<R>, R: 'static + TrackReader> MIDIFile<T, R> {
             .map(|(i, track)| into_track_events(track, i as u32))
             .collect();
         let batched_tracks_threaded = channels_into_threadpool(batched_tracks, 10);
-        let merged_batches = merge_events_array(batched_tracks_threaded);
-        merged_batches
+        merge_events_array(batched_tracks_threaded)
     }
 
     pub fn iter_track(
@@ -186,8 +184,7 @@ impl<T: 'static + MIDIReader<R>, R: 'static + TrackReader> MIDIFile<T, R> {
         track: usize,
     ) -> impl Iterator<Item = Result<Delta<u64, Event>, MIDIParseError>> {
         let reader = self.open_track_reader(track);
-        let parser = TrackParser::new(reader);
-        parser
+        TrackParser::new(reader)
     }
 
     pub fn ppq(&self) -> u16 {

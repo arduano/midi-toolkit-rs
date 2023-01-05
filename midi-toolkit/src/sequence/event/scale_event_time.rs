@@ -43,7 +43,7 @@ pub fn scale_event_time<
     iter.map(move |e| {
         let mut e = e?;
         let delta = e.delta_mut();
-        *delta = *delta * multiplier;
+        *delta *= multiplier;
         Ok(e)
     })
 }

@@ -38,14 +38,14 @@ pub struct TrackWriter<'a> {
 }
 
 fn encode_u16(val: u16) -> [u8; 2] {
-    let mut bytes = [0 as u8; 2];
+    let mut bytes = [0; 2];
     bytes[0] = ((val >> 8) & 0xff) as u8;
     bytes[1] = (val & 0xff) as u8;
     bytes
 }
 
 fn encode_u32(val: u32) -> [u8; 4] {
-    let mut bytes = [0 as u8; 4];
+    let mut bytes = [0; 4];
     bytes[0] = ((val >> 24) & 0xff) as u8;
     bytes[1] = ((val >> 16) & 0xff) as u8;
     bytes[2] = ((val >> 8) & 0xff) as u8;
@@ -54,8 +54,8 @@ fn encode_u32(val: u32) -> [u8; 4] {
 }
 
 fn flush_track(writer: &mut Box<dyn WriteSeek>, mut output: QueuedOutput) -> Result<(), io::Error> {
-    writer.write("MTrk".as_bytes())?;
-    writer.write(&encode_u32(output.length))?;
+    writer.write_all("MTrk".as_bytes())?;
+    writer.write_all(&encode_u32(output.length))?;
     copy(&mut output.write, writer)?;
     Ok(())
 }
@@ -71,11 +71,11 @@ impl MIDIWriter {
         ppq: u16,
     ) -> Result<MIDIWriter, MIDIWriteError> {
         output.seek(SeekFrom::Start(0))?;
-        output.write("MThd".as_bytes())?;
-        output.write(&encode_u32(6))?;
-        output.write(&encode_u16(1))?;
-        output.write(&encode_u16(0))?;
-        output.write(&encode_u16(ppq))?;
+        output.write_all("MThd".as_bytes())?;
+        output.write_all(&encode_u32(6))?;
+        output.write_all(&encode_u16(1))?;
+        output.write_all(&encode_u16(0))?;
+        output.write_all(&encode_u16(ppq))?;
 
         Ok(MIDIWriter {
             output: Some(Mutex::new(output)),
@@ -99,7 +99,7 @@ impl MIDIWriter {
         let mut output = self.get_writer().lock().unwrap();
         let pos = output.stream_position()?;
         output.seek(SeekFrom::Start(at))?;
-        output.write(&encode_u16(val))?;
+        output.write_all(&encode_u16(val))?;
         output.seek(SeekFrom::Start(pos))?;
         Ok(())
     }
@@ -116,7 +116,7 @@ impl MIDIWriter {
         Ok(self.write_u16_at(10, ppq)?)
     }
 
-    pub fn open_next_track<'a>(&'a self) -> TrackWriter<'a> {
+    pub fn open_next_track(&self) -> TrackWriter {
         let track_id = {
             let mut tracks = self.tracks.lock().unwrap();
             let track_id = tracks.next_init_track;
@@ -126,10 +126,10 @@ impl MIDIWriter {
         self.open_track(track_id)
     }
 
-    pub fn open_track<'a>(&'a self, track_id: i32) -> TrackWriter<'a> {
+    pub fn open_track(&self, track_id: i32) -> TrackWriter {
         self.add_opened_track(track_id);
         TrackWriter {
-            midi_writer: &self,
+            midi_writer: self,
             track_id,
             writer: Some(Cursor::new(Vec::new())),
         }
@@ -144,15 +144,14 @@ impl MIDIWriter {
 
     pub fn end(&mut self) -> Result<(), MIDIWriteError> {
         let tracks = self.tracks.lock().unwrap();
-        if tracks.opened_tracks.len() > 0 {
+        if !tracks.opened_tracks.is_empty() {
             let unwritten: Vec<&i32> = tracks.queued_writes.keys().collect();
             panic!("Not all tracks have been ended! Make sure you drop or call .end() on each track before ending the MIDIWriter\nMissing tracks {:?}", unwritten);
         }
-        if tracks.queued_writes.len() > 0 {
+        if !tracks.queued_writes.is_empty() {
             let max_track = tracks.queued_writes.keys().max().unwrap();
             let unwritten: Vec<i32> = (0..*max_track)
-                .into_iter()
-                .filter(|track_id| !tracks.written_tracks.contains(&track_id))
+                .filter(|track_id| !tracks.written_tracks.contains(track_id))
                 .collect();
             panic!(
                 "Not all tracks have been opened! Missing tracks {:?}",
@@ -221,7 +220,7 @@ impl<'a> TrackWriter<'a> {
         self.writer.is_some()
     }
 
-    pub fn get_writer_mut<'w>(&'w mut self) -> &'w mut impl Write {
+    pub fn get_writer_mut(&mut self) -> &mut impl Write {
         self.writer
             .as_mut()
             .expect("Tried to write to TrackWriter after .end() was called")
@@ -265,7 +264,7 @@ impl<'a> Drop for TrackWriter<'a> {
     }
 }
 
-impl<'a> Drop for MIDIWriter {
+impl Drop for MIDIWriter {
     fn drop(&mut self) {
         if self.is_ended() {
             match self.end() {

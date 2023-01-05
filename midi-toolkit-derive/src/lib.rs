@@ -5,7 +5,7 @@ use proc_macro_error::{abort_call_site, proc_macro_error, ResultExt};
 use quote::{quote, ToTokens};
 use syn::{self, ext::IdentExt, Attribute, DataEnum, DataStruct, DeriveInput, Fields, Variant};
 
-fn has_attr<'a>(attrs: &[Attribute], name: &str) -> bool {
+fn has_attr(attrs: &[Attribute], name: &str) -> bool {
     attrs.iter().any(|a| match a.path.get_ident() {
         None => false,
         Some(ident) => ident.unraw().to_string().eq(name),
@@ -20,7 +20,7 @@ fn find_attr_fields<'a>(fields: &'a Fields, name: &str) -> Option<&'a Ident> {
     match fields.len() {
         0 => None,
         1 => fields[0].ident.as_ref(),
-        _ => abort_call_site!(format!("Multiple fields found with attribute #[{}]", name)),
+        _ => abort_call_site!(format!("Multiple fields found with attribute #[{name}]")),
     }
 }
 
@@ -205,15 +205,13 @@ pub fn midi_event(input: TokenStream) -> TokenStream {
 fn event_enum_from_struct(name: &Ident) -> Ident {
     let event_name = name.unraw().to_string();
     let event_name = &event_name[..event_name.len() - 5];
-    let event_ident = Ident::new(event_name, name.span());
-    event_ident
+    Ident::new(event_name, name.span())
 }
 
 fn event_struct_from_enum(name: &Ident) -> Ident {
     let event_name = name.unraw().to_string();
     let event_name = event_name + "Event";
-    let event_ident = Ident::new(&event_name[..], name.span());
-    event_ident
+    Ident::new(&event_name[..], name.span())
 }
 
 #[proc_macro_derive(NewEvent)]
@@ -232,24 +230,17 @@ pub fn create_new_event(input: TokenStream) -> TokenStream {
 
         let event_ident = event_enum_from_struct(name);
         let snake_case = name.unraw().to_string()[..].to_case(Case::Snake);
-        let new_ident = Ident::new(&format!("new_{}", snake_case)[..], Span::call_site());
-        let new_delta_ident =
-            Ident::new(&format!("new_delta_{}", snake_case)[..], Span::call_site());
+        let new_ident = Ident::new(&format!("new_{snake_case}")[..], Span::call_site());
+        let new_delta_ident = Ident::new(&format!("new_delta_{snake_case}")[..], Span::call_site());
 
-        let doc_str = &format!("Creates a new `{}`.", name);
+        let doc_str = &format!("Creates a new `{name}`.");
         let doc_str2 = &format!(
-            "Creates a new [`{}`](crate::events::{}) wrapped in [`Event::{}`](crate::events::Event::{}).",
-            name,
-            name,
-            event_ident.unraw().to_string(),
-            event_ident.unraw().to_string()
+            "Creates a new [`{name}`](crate::events::{name}) wrapped in [`Event::{ident}`](crate::events::Event::{ident}).",
+            ident = event_ident.unraw(),
         );
         let doc_str2_delta = &format!(
-            "Creates a new [`{}`](crate::events::{}) wrapped in [`Event::{}`](crate::events::Event::{}).",
-            name,
-            name,
-            event_ident.unraw().to_string(),
-            event_ident.unraw().to_string()
+            "Creates a new [`{name}`](crate::events::{name}) wrapped in [`Event::{ident}`](crate::events::Event::{ident}).",
+            ident = event_ident.unraw(),
         );
 
         for field in fields.iter() {
@@ -338,7 +329,7 @@ pub fn event_impl(input: TokenStream) -> TokenStream {
         }
 
         fn is_boxed(variant: &Variant) -> bool {
-            let field = variant.fields.iter().nth(0).unwrap();
+            let field = variant.fields.iter().next().unwrap();
             let mut tokens = TokenStream2::new();
             field.ty.to_tokens(&mut tokens);
             tokens.to_string().starts_with("Box <")
@@ -369,7 +360,7 @@ pub fn event_impl(input: TokenStream) -> TokenStream {
         }
 
         fn create_match<T: Fn(&Variant, Mappers) -> TokenStream2>(
-            variants: &Vec<&Variant>,
+            variants: &[&Variant],
             map: T,
         ) -> TokenStream2 {
             let wrap_some: Box<dyn Mapper> = Box::new(WrapSome);
@@ -380,7 +371,7 @@ pub fn event_impl(input: TokenStream) -> TokenStream {
                     .iter()
                     .map(|v| {
                         map(
-                            *v,
+                            v,
                             Mappers {
                                 wrap_key: if is_key(v) { &*wrap_some } else { &*dont_wrap },
                                 wrap_channel: if is_channel(v) {
@@ -449,8 +440,8 @@ pub fn event_impl(input: TokenStream) -> TokenStream {
             let struct_ident = event_struct_from_enum(ident);
             let doc_str = &format!(
                 "Wraps the `{}` in a `Event::{}`.",
-                struct_ident.unraw().to_string(),
-                ident.unraw().to_string()
+                struct_ident.unraw(),
+                ident.unraw()
             );
             if is_boxed(variant) {
                 event_wrap_impl.push(quote! {

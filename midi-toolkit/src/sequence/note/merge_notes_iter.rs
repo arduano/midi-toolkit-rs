@@ -20,7 +20,7 @@ pub fn merge_notes_iterator<
 
     GenIter(move || {
         let mut get_next_seq = move || {
-            while let Some(mut seq) = iter.next() {
+            for mut seq in iter.by_ref() {
                 let first = seq.next();
                 match first {
                     None => continue,
@@ -46,7 +46,7 @@ pub fn merge_notes_iterator<
         let mut next_seq = unwrap!(get_next_seq());
 
         loop {
-            if sequences.len() == 0 {
+            if sequences.is_empty() {
                 if let Some(next) = next_seq.take() {
                     sequences.push(next);
                     next_seq = unwrap!(get_next_seq());
@@ -55,11 +55,9 @@ pub fn merge_notes_iterator<
                 }
             }
 
-            let len = sequences.len();
             let mut smallest_index = 0;
             let mut smallest_time = sequences[0].time;
-            for i in 0..len {
-                let next = &sequences[i];
+            for (i, next) in sequences.iter().enumerate() {
                 if next.time < smallest_time {
                     smallest_time = next.time;
                     smallest_index = i;

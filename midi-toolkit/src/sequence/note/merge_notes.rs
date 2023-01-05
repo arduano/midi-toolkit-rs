@@ -44,12 +44,10 @@ pub fn merge_notes_array<
             }
         }
 
-        while sequences.len() > 0 {
-            let len = sequences.len();
+        while !sequences.is_empty() {
             let mut smallest_index = 0;
             let mut smallest_time = sequences[0].time;
-            for i in 0..len {
-                let next = &sequences[i];
+            for (i, next) in sequences.iter().enumerate() {
                 if next.time < smallest_time {
                     smallest_time = next.time;
                     smallest_index = i;

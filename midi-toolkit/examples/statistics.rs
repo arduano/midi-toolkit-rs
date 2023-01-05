@@ -35,9 +35,7 @@ fn main() {
         "MIDI length: {}",
         duration_to_minutes_seconds(stats1.calculate_total_duration(file.ppq()))
     );
-    println!("Other stats: {:#?}", stats1);
-    println!("");
-    println!("");
+    println!("Other stats: {stats1:#?}\n\n");
 
     let now = Instant::now();
     let stats2 = pipe!(
@@ -48,5 +46,5 @@ fn main() {
         "MIDI length: {}",
         duration_to_minutes_seconds(stats2.calculate_total_duration(file.ppq()))
     );
-    println!("Other stats: {:#?}", stats2);
+    println!("Other stats: {stats2:#?}");
 }

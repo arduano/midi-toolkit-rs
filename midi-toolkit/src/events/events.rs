@@ -328,7 +328,7 @@ impl SerializeEvent for UnknownMetaEvent {
         let mut vec = Vec::new();
         vec.reserve(self.bytes.len() + 2);
         vec.push(0xFF);
-        vec.push(self.kind as u8);
+        vec.push(self.kind);
         vec.append(&mut encode_var_length_value(self.bytes.len() as u64));
         for v in self.bytes.iter() {
             vec.push(*v);
