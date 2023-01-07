@@ -83,16 +83,17 @@ pub fn threaded_buffer<
 
 pub fn channels_into_threadpool<
     T: 'static + Send + Sync,
-    I: 'static + Iterator<Item = T> + Sized + Send + Sync,
+    E: 'static + Send + Sync,
+    I: 'static + Iterator<Item = Result<T, E>> + Sized + Send + Sync,
 >(
     iters: Vec<I>,
     buffer_size: usize,
-) -> Vec<impl Iterator<Item = T> + Sync + Send> {
+) -> Vec<impl Iterator<Item = Result<T, E>>> {
     let buffer_count = 3;
 
-    struct ReadCommand<T> {
-        vector: VecDeque<T>,
-        response_sender: Sender<VecDeque<T>>,
+    struct ReadCommand<T, E> {
+        vector: VecDeque<Result<T, E>>,
+        response_sender: Sender<VecDeque<Result<T, E>>>,
         iter_id: usize,
     }
 
@@ -101,7 +102,7 @@ pub fn channels_into_threadpool<
     let mut output_iters = Vec::new();
 
     for iter_id in 0..iters.len() {
-        let (tx, rx) = bounded::<VecDeque<T>>(buffer_count);
+        let (tx, rx) = bounded::<VecDeque<Result<T, E>>>(buffer_count);
 
         let sender = request_queue_sender.clone();
 
@@ -155,7 +156,12 @@ pub fn channels_into_threadpool<
                 if !iter.ended {
                     for _ in 0..buffer_size {
                         match iter.iter.next() {
-                            Some(item) => vector.push_back(item),
+                            Some(Ok(item)) => vector.push_back(Ok(item)),
+                            Some(Err(error)) => {
+                                vector.push_back(Err(error));
+                                iter.ended = true;
+                                break;
+                            }
                             None => {
                                 iter.ended = true;
                                 break;
