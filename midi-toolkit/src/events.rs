@@ -121,7 +121,7 @@ mod tests {
 
     fn parse_from_vec(mut vec: Vec<u8>) -> Delta<u64, Event> {
         vec.insert(0, 64);
-        let reader = FullRamTrackReader::new_from_vec(vec);
+        let reader = FullRamTrackReader::new_from_vec(None, vec);
         let mut parser = crate::io::TrackParser::new(reader);
         parser.next().unwrap().unwrap()
     }
