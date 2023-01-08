@@ -9,7 +9,7 @@ use midi_toolkit::{
 
 pub fn main() {
     println!("Opening midi...");
-    let file = MIDIFile::open("/run/media/d/Midis/CPU Fryer 2 Final.mid", None).unwrap();
+    let file = MIDIFile::open("D:/Midis/tau2.5.9.mid", None).unwrap();
     let now = Instant::now();
     let mut nc: u64 = 0;
 
@@ -19,7 +19,11 @@ pub fn main() {
 
     for e in merged {
         if let Event::NoteOn(_) = e.as_event() {
+            dbg!(e);
             nc += 1;
+            if nc > 10 {
+                break;
+            }
         }
     }
 
