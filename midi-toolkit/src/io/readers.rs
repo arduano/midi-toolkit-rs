@@ -48,8 +48,10 @@ impl BufferReadProvider {
                                  length: usize|
                   -> Result<Vec<u8>, io::Error> {
                 reader.seek(SeekFrom::Start(start))?;
-                let (sub, _) = buffer.split_at_mut(length);
-                reader.read_exact(sub)?;
+                if length < buffer.len() {
+                    buffer.truncate(length)
+                }
+                reader.read_exact(&mut buffer)?;
                 Ok(buffer)
             };
 
