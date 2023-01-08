@@ -19,14 +19,12 @@ fn duration_to_minutes_seconds(duration: Duration) -> String {
 
 fn main() {
     println!("Opening midi...");
-    let file = MIDIFile::open_in_ram("D:/Midis/tau2.5.9.mid", None).unwrap();
+    let file = MIDIFile::open("/run/media/d/Midis/Po Pi Po V4.mid", None).unwrap();
     println!("Parsing midi...");
 
     let now = Instant::now();
     let stats1 = pipe!(
-        file.iter_all_tracks()
-        |>to_vec()
-        |>merge_events_array()
+        file.iter_all_events_merged()
         |>get_channel_statistics().unwrap()
     );
 

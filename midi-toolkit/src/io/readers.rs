@@ -157,7 +157,9 @@ impl RAMReader {
     }
 }
 
-pub trait MIDIReader<T: TrackReader>: Debug {
+pub trait MIDIReader: Debug {
+    type ByteReader: TrackReader;
+
     fn read_bytes_to(&self, pos: u64, bytes: Vec<u8>) -> Result<Vec<u8>, MIDILoadError>;
     fn read_bytes(&self, pos: u64, count: usize) -> Result<Vec<u8>, MIDILoadError> {
         let bytes = vec![0u8; count];
@@ -170,12 +172,14 @@ pub trait MIDIReader<T: TrackReader>: Debug {
         self.len() == 0
     }
 
-    fn open_reader(&self, start: u64, len: u64) -> T;
+    fn open_reader(&self, track_number: Option<u32>, start: u64, len: u64) -> Self::ByteReader;
 }
 
-impl MIDIReader<DiskTrackReader> for DiskReader {
-    fn open_reader(&self, start: u64, len: u64) -> DiskTrackReader {
-        DiskTrackReader::new(self.reader.clone(), start, len)
+impl MIDIReader for DiskReader {
+    type ByteReader = DiskTrackReader;
+
+    fn open_reader(&self, track_number: Option<u32>, start: u64, len: u64) -> DiskTrackReader {
+        DiskTrackReader::new(track_number, self.reader.clone(), start, len)
     }
 
     fn read_bytes_to(&self, pos: u64, bytes: Vec<u8>) -> Result<Vec<u8>, MIDILoadError> {
@@ -187,9 +191,18 @@ impl MIDIReader<DiskTrackReader> for DiskReader {
     }
 }
 
-impl MIDIReader<FullRamTrackReader> for RAMReader {
-    fn open_reader<'a>(&self, start: u64, len: u64) -> FullRamTrackReader {
+impl MIDIReader for RAMReader {
+    type ByteReader = FullRamTrackReader;
+
+    fn open_reader<'a>(
+        &self,
+        track_number: Option<u32>,
+        start: u64,
+        len: u64,
+    ) -> FullRamTrackReader {
         FullRamTrackReader {
+            track_number,
+            start: start as usize,
             pos: start as usize,
             end: (start + len) as usize,
             bytes: self.bytes.clone(),
@@ -213,15 +226,21 @@ impl MIDIReader<FullRamTrackReader> for RAMReader {
 }
 
 pub trait TrackReader: Send + Sync {
+    /// The stored track number for diagnostic purposes
+    fn track_number(&self) -> Option<u32>;
+
     fn read(&mut self) -> Result<u8, MIDIParseError>;
     fn pos(&self) -> u64;
+    fn is_at_end(&self) -> bool;
 }
 
 #[allow(clippy::type_complexity)]
 pub struct DiskTrackReader {
+    /// The track number used only for error logging purposes
+    track_number: Option<u32>,
+
     reader: Arc<BufferReadProvider>,
     start: u64,                  // Relative to midi
-    pos: u64,                    // Relative to midi
     len: u64,                    //
     buffer: Option<Vec<u8>>,     //
     buffer_start: u64,           // Relative to start
@@ -233,21 +252,38 @@ pub struct DiskTrackReader {
 }
 
 pub struct FullRamTrackReader {
+    /// The track number and start are only for error logging purposes
+    track_number: Option<u32>,
+    start: usize,
+
     bytes: Arc<Vec<u8>>,
     pos: usize,
     end: usize,
 }
 
 impl FullRamTrackReader {
-    pub fn new(bytes: Arc<Vec<u8>>, pos: usize, end: usize) -> FullRamTrackReader {
-        FullRamTrackReader { bytes, pos, end }
+    pub fn new(
+        track_number: Option<u32>,
+        bytes: Arc<Vec<u8>>,
+        start: usize,
+        end: usize,
+    ) -> FullRamTrackReader {
+        FullRamTrackReader {
+            track_number,
+            bytes,
+            start,
+            pos: start,
+            end,
+        }
     }
 
-    pub fn new_from_vec(bytes: Vec<u8>) -> FullRamTrackReader {
+    pub fn new_from_vec(track_number: Option<u32>, bytes: Vec<u8>) -> FullRamTrackReader {
         let len = bytes.len();
         FullRamTrackReader {
+            track_number,
             bytes: Arc::new(bytes),
             pos: 0,
+            start: 0,
             end: len,
         }
     }
@@ -257,7 +293,12 @@ impl TrackReader for FullRamTrackReader {
     #[inline(always)]
     fn read(&mut self) -> Result<u8, MIDIParseError> {
         if self.pos == self.end {
-            return Err(MIDIParseError::UnexpectedTrackEnd);
+            return Err(MIDIParseError::UnexpectedTrackEnd {
+                track_number: self.track_number,
+                track_start: self.start as u64,
+                expected_track_end: self.end as u64,
+                found_track_end: self.pos as u64,
+            });
         }
         let b = self.bytes[self.pos];
         self.pos += 1;
@@ -267,6 +308,14 @@ impl TrackReader for FullRamTrackReader {
     #[inline(always)]
     fn pos(&self) -> u64 {
         self.pos as u64
+    }
+
+    fn is_at_end(&self) -> bool {
+        self.pos == self.end
+    }
+
+    fn track_number(&self) -> Option<u32> {
+        self.track_number
     }
 }
 
@@ -297,7 +346,7 @@ impl DiskTrackReader {
         self.reader.send_read_command(
             self.receiver_sender.clone().unwrap(),
             buffer,
-            self.unrequested_data_start + self.pos,
+            self.unrequested_data_start + self.start,
             next_len,
         );
 
@@ -314,39 +363,11 @@ impl DiskTrackReader {
         }
     }
 
-    pub fn new(reader: Arc<BufferReadProvider>, start: u64, len: u64) -> DiskTrackReader {
-        let buffer_count = 3;
-
-        let (send, receive) = unbounded();
-        let send = Arc::new(send);
-
-        let mut reader = DiskTrackReader {
-            reader,
-            start,
-            pos: start,
-            len,
-            buffer: None,
-            buffer_start: 0,
-            buffer_pos: 0,
-            unrequested_data_start: 0,
-            receiver: DelayedReceiver::new(receive),
-            receiver_sender: Some(send),
-        };
-
-        for _ in 0..buffer_count {
-            reader.send_next_read(None);
-        }
-
-        reader.receiver.wait_first();
-
-        reader
-    }
-
-    pub fn new_with_pos(
+    pub fn new(
+        track_number: Option<u32>,
         reader: Arc<BufferReadProvider>,
         start: u64,
         len: u64,
-        pos: u64,
     ) -> DiskTrackReader {
         let buffer_count = 3;
 
@@ -354,9 +375,9 @@ impl DiskTrackReader {
         let send = Arc::new(send);
 
         let mut reader = DiskTrackReader {
+            track_number,
             reader,
             start,
-            pos: start + pos,
             len,
             buffer: None,
             buffer_start: 0,
@@ -383,7 +404,12 @@ impl TrackReader for DiskTrackReader {
                 if let Some(next) = self.receive_next_buffer() {
                     self.buffer = Some(next?);
                 } else {
-                    return Err(MIDIParseError::UnexpectedTrackEnd);
+                    return Err(MIDIParseError::UnexpectedTrackEnd {
+                        track_number: self.track_number,
+                        track_start: self.start,
+                        expected_track_end: self.start + self.len,
+                        found_track_end: self.pos(),
+                    });
                 }
             }
             Some(_) => {}
@@ -405,6 +431,14 @@ impl TrackReader for DiskTrackReader {
 
     #[inline(always)]
     fn pos(&self) -> u64 {
-        self.pos - self.start
+        self.start + self.buffer_start + self.buffer_pos as u64
+    }
+
+    fn is_at_end(&self) -> bool {
+        self.buffer_start + self.buffer_pos as u64 >= self.len
+    }
+
+    fn track_number(&self) -> Option<u32> {
+        self.track_number
     }
 }
