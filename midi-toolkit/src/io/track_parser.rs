@@ -157,7 +157,7 @@ impl<T: TrackReader> TrackParser<T> {
             }
             _ => match command {
                 0xF0 => {
-                    let size = self.read_var_length()? + 10000000;
+                    let size = self.read_var_length()?;
                     let mut data = Vec::new();
                     for _ in 0..size {
                         data.push(self.read_fast()?);
