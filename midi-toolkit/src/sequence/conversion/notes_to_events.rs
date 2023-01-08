@@ -32,7 +32,10 @@ impl<D: MIDINum> Eq for NoteOffHolder<D> {}
 
 impl<D: MIDINum> PartialOrd for NoteOffHolder<D> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.0.delta.partial_cmp(&other.0.delta).map(|o| o.reverse())
+        self.0
+            .delta
+            .partial_cmp(&other.0.delta)
+            .map(|o| o.reverse())
     }
 }
 
@@ -41,7 +44,8 @@ impl<D: MIDINum> Ord for NoteOffHolder<D> {
         self.0
             .delta
             .partial_cmp(&other.0.delta)
-            .unwrap_or(std::cmp::Ordering::Equal).reverse()
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .reverse()
     }
 }
 
