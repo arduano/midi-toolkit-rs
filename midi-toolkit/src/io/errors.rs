@@ -37,10 +37,9 @@ impl std::fmt::Display for MIDIParseError {
             } => match track_number {
                 Some(track_number) => write!(
                     f,
-                    "Corrupt event (track {}, position: {:#06x})",
-                    track_number, position
+                    "Corrupt event (track {track_number}, position: {position:#06x})",
                 ),
-                None => write!(f, "Corrupt event (position: {:#06x})", position),
+                None => write!(f, "Corrupt event (position: {position:#06x})", ),
             },
             MIDIParseError::UnexpectedTrackEnd {
                 track_number,
@@ -48,8 +47,8 @@ impl std::fmt::Display for MIDIParseError {
                 expected_track_end,
                 found_track_end,
             } => match track_number {
-                Some(track_number) => write!(f, "Unexpected track end (track {}, track start: {:#06x}, expected end: {:#06x}, found end: {:#06x})", track_number, track_start, expected_track_end, found_track_end),
-                None => write!(f, "Unexpected track end (track start: {:#06x}, expected end: {:#06x}, found end: {:#06x})", track_start, expected_track_end, found_track_end)
+                Some(track_number) => write!(f, "Unexpected track end (track {track_number}, track start: {track_start:#06x}, expected end: {expected_track_end:#06x}, found end: {found_track_end:#06x})"),
+                None => write!(f, "Unexpected track end (track start: {track_start:#06x}, expected end: {expected_track_end:#06x}, found end: {found_track_end:#06x})")
             },
             MIDIParseError::FilesystemError(e) => write!(f, "Filesystem error: {e}"),
         }

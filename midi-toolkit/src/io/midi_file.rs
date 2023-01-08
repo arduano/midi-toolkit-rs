@@ -1,7 +1,6 @@
 use std::{
     fs::File,
     io::{Read, Seek},
-    marker::PhantomData,
     path::Path,
 };
 
@@ -20,9 +19,7 @@ use std::fmt::Debug;
 
 use super::{
     errors::{MIDILoadError, MIDIParseError},
-    readers::{
-        DiskReader, DiskTrackReader, FullRamTrackReader, MIDIReader, RAMReader, TrackReader,
-    },
+    readers::{DiskReader, MIDIReader, RAMReader},
     track_parser::TrackParser,
 };
 
@@ -125,7 +122,8 @@ impl<T: 'static + MIDIReader> MIDIFile<T> {
 
     pub fn open_track_reader(&self, track: u32) -> T::ByteReader {
         let pos = &self.track_positions[track as usize];
-        self.reader.open_reader(Some(track), pos.pos, pos.len as u64)
+        self.reader
+            .open_reader(Some(track), pos.pos, pos.len as u64)
     }
 
     pub fn iter_all_tracks(

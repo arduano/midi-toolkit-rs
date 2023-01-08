@@ -4,7 +4,7 @@ use midi_toolkit::{
     io::MIDIFile,
     pipe,
     sequence::{
-        event::{get_channel_statistics, get_channels_array_statistics, merge_events_array},
+        event::{get_channel_statistics, get_channels_array_statistics},
         to_vec,
     },
 };
