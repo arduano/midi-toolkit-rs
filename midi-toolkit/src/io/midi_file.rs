@@ -25,6 +25,7 @@ use super::{
 
 pub trait ReadSeek: Debug + Read + Seek + Send {}
 impl ReadSeek for File {}
+impl ReadSeek for std::io::Cursor<&[u8]> {}
 
 #[derive(Debug)]
 struct TrackPos {
@@ -227,7 +228,7 @@ impl MIDIFile<RAMReader> {
         MIDIFile::new_from_disk_reader(reader, read_progress)
     }
 
-    pub fn open_from_stream_in_ram<T: 'static + ReadSeek>(
+    pub fn open_from_stream_in_ram<T: ReadSeek>(
         stream: T,
         read_progress: Option<&mut dyn FnMut(u32)>,
     ) -> Result<Self, MIDILoadError> {
