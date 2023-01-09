@@ -9,6 +9,7 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4"
+#cargo-libafl-helper = "0"
 
 [dependencies.midi-toolkit-rs]
 path = ".."
@@ -23,5 +24,11 @@ debug = 1
 [[bin]]
 name = "merge"
 path = "fuzz_targets/merge.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "parse"
+path = "fuzz_targets/parse.rs"
 test = false
 doc = false

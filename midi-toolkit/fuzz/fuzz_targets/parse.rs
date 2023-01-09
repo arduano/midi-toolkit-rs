@@ -3,20 +3,17 @@
 use libfuzzer_sys::fuzz_target;
 //use cargo_libafl_helper::fuzz_target;
 
-use midi_toolkit::{
-    io::MIDIFile,
-    pipe,
-    sequence::{event::merge_events_array, to_vec},
-};
+use midi_toolkit::{io::MIDIFile, pipe};
 use std::io::Cursor;
 
 fuzz_target!(|data: &[u8]| {
     let cursor = Cursor::new(data);
     if let Ok(file) = MIDIFile::open_from_stream_in_ram(cursor, None) {
-        let merged = pipe!(file.iter_all_tracks()|>to_vec()|>merge_events_array());
-        for x in merged {
-            if x.is_err() {
-                break;
+        for track in file.iter_all_tracks() {
+            for x in pipe!(track) {
+                if x.is_err() {
+                    break;
+                }
             }
         }
     }
