@@ -57,6 +57,7 @@ pub trait MIDINumFrom<T: MIDINum> {
 pub trait MIDINum:
     Num
     + PartialOrd
+    + PartialEq
     + AddAssign
     + SubAssign
     + DivAssign

@@ -1,8 +1,53 @@
-use std::collections::VecDeque;
+use std::collections::BinaryHeap;
 
 use gen_iter::GenIter;
 
-use crate::{events::Event, notes::MIDINote, num::MIDINum, sequence::event::Delta, unwrap};
+use crate::{
+    events::{Event, NoteOffEvent},
+    notes::MIDINote,
+    num::MIDINum,
+    sequence::event::Delta,
+    unwrap,
+};
+
+/// A temporary struct for ordering note off events in a binary heap.
+struct NoteOffHolder<D: MIDINum>(Delta<D, NoteOffEvent>);
+
+impl<D: MIDINum> NoteOffHolder<D> {
+    fn new(delta: D, event: NoteOffEvent) -> Self {
+        Self(Delta::new(delta, event))
+    }
+
+    fn into_event(self) -> Delta<D, Event> {
+        Delta::new(self.0.delta, Event::NoteOff(self.0.event))
+    }
+}
+
+impl<D: MIDINum> PartialEq for NoteOffHolder<D> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.delta == other.0.delta
+    }
+}
+impl<D: MIDINum> Eq for NoteOffHolder<D> {}
+
+impl<D: MIDINum> PartialOrd for NoteOffHolder<D> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.0
+            .delta
+            .partial_cmp(&other.0.delta)
+            .map(|o| o.reverse())
+    }
+}
+
+impl<D: MIDINum> Ord for NoteOffHolder<D> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.0
+            .delta
+            .partial_cmp(&other.0.delta)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .reverse()
+    }
+}
 
 /// Takes a note iterator and converts it to a note event iterator.
 /// Effectively flattening the notes into an event sequence.
@@ -10,16 +55,17 @@ pub fn notes_to_events<D: MIDINum, N: MIDINote<D>, Err>(
     iter: impl Iterator<Item = Result<N, Err>> + Sized,
 ) -> impl Iterator<Item = Result<Delta<D, Event>, Err>> {
     GenIter(move || {
-        let mut note_offs = VecDeque::<Delta<D, Event>>::new();
+        let mut note_offs = BinaryHeap::<NoteOffHolder<D>>::new();
 
         let mut prev_time = D::zero();
 
         for note in iter {
             let note = unwrap!(note);
 
-            while let Some(e) = note_offs.front() {
-                if e.delta <= note.start() {
-                    let mut e = note_offs.pop_front().unwrap();
+            while let Some(e) = note_offs.peek() {
+                if e.0.delta <= note.start() {
+                    let holder = note_offs.pop().unwrap();
+                    let mut e = holder.into_event();
                     let time = e.delta;
                     e.delta -= prev_time;
                     prev_time = time;
@@ -39,47 +85,14 @@ pub fn notes_to_events<D: MIDINum, N: MIDINote<D>, Err>(
             prev_time = note.start();
 
             let time = note.end();
-            let off = Event::new_delta_note_off_event(time, note.channel(), note.key());
+            let off = NoteOffEvent::new(note.channel(), note.key());
+            let holder = NoteOffHolder::new(time, off);
 
-            if note_offs.is_empty() {
-                note_offs.push_back(off);
-            } else {
-                // binary search
-
-                let len = note_offs.len();
-                let mut pos = len / 2;
-                let mut jump = note_offs.len() / 4;
-                loop {
-                    if jump < 1 {
-                        jump = 1;
-                    }
-
-                    let e = &note_offs[pos];
-
-                    if e.delta >= time {
-                        if pos == 0 || note_offs[pos - 1].delta < time {
-                            note_offs.insert(pos, off);
-                            break;
-                        } else if jump > pos {
-                            pos = 0;
-                        } else {
-                            pos -= jump;
-                        }
-                    } else if pos == len - 1 {
-                        note_offs.push_back(off);
-                        break;
-                    } else if jump >= len - pos {
-                        pos = len - 1;
-                    } else {
-                        pos += jump;
-                    }
-
-                    jump /= 2;
-                }
-            }
+            note_offs.push(holder);
         }
 
-        while let Some(mut e) = note_offs.pop_front() {
+        while let Some(holder) = note_offs.pop() {
+            let mut e = holder.into_event();
             let time = e.delta;
             e.delta -= prev_time;
             prev_time = time;

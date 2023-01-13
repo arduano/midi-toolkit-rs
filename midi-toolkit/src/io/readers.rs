@@ -26,7 +26,7 @@ pub struct RAMReader {
 }
 
 pub struct ReadCommand {
-    destination: Arc<Sender<Result<Vec<u8>, io::Error>>>,
+    destination: Sender<Result<Vec<u8>, io::Error>>,
     buffer: Vec<u8>,
     start: u64,
     length: usize,
@@ -78,7 +78,7 @@ impl BufferReadProvider {
 
     pub fn send_read_command(
         &self,
-        destination: Arc<Sender<Result<Vec<u8>, io::Error>>>,
+        destination: Sender<Result<Vec<u8>, io::Error>>,
         buffer: Vec<u8>,
         start: u64,
         length: usize,
@@ -97,7 +97,7 @@ impl BufferReadProvider {
         let (send, receive) = bounded::<Result<Vec<u8>, io::Error>>(1);
 
         let len = buf.len();
-        self.send_read_command(Arc::new(send), buf, start, len);
+        self.send_read_command(send, buf, start, len);
 
         receive.recv().unwrap()
     }
@@ -236,7 +236,6 @@ pub trait TrackReader: Send + Sync {
     fn is_at_end(&self) -> bool;
 }
 
-#[allow(clippy::type_complexity)]
 pub struct DiskTrackReader {
     /// The track number used only for error logging purposes
     track_number: Option<u32>,
@@ -250,7 +249,7 @@ pub struct DiskTrackReader {
     unrequested_data_start: u64, // Relative to start
 
     receiver: DelayedReceiver<Result<Vec<u8>, io::Error>>,
-    receiver_sender: Option<Arc<Sender<Result<Vec<u8>, io::Error>>>>, // Becomes None when there's nothing left to read
+    receiver_sender: Option<Sender<Result<Vec<u8>, io::Error>>>, // Becomes None when there's nothing left to read
 }
 
 pub struct FullRamTrackReader {
@@ -374,7 +373,6 @@ impl DiskTrackReader {
         let buffer_count = 3;
 
         let (send, receive) = unbounded();
-        let send = Arc::new(send);
 
         let mut reader = DiskTrackReader {
             track_number,
