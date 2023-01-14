@@ -97,7 +97,7 @@ impl<D: MIDINum, E: MIDIDelta<D>, Err, I: Iterator<Item = Result<E, Err>> + Size
             }
         }
 
-        if sequences.len() == 0 {
+        if sequences.is_empty() {
             sequences.push(Sequence::Empty);
         }
 
@@ -157,6 +157,7 @@ impl<D: MIDINum, E: MIDIDelta<D>, Err, I: Iterator<Item = Result<E, Err>> + Size
     }
 
     fn find_smallest_sequence_index(&self) -> Option<usize> {
+        #[allow(clippy::question_mark)]
         // Empty if the root time is None
         if self.get_time_for(0).is_none() {
             return None;
