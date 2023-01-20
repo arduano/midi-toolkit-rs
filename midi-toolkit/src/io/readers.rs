@@ -1,16 +1,13 @@
 use crossbeam_channel::{bounded, unbounded, Sender};
 use std::{
-    io::{self, SeekFrom},
+    io::{self, Read, Seek, SeekFrom},
     sync::Arc,
     thread::{self, JoinHandle},
 };
 
 use crate::DelayedReceiver;
 
-use super::{
-    errors::{MIDILoadError, MIDIParseError},
-    midi_file::ReadSeek,
-};
+use super::errors::{MIDILoadError, MIDIParseError};
 
 use std::fmt::Debug;
 #[derive(Debug)]
@@ -39,7 +36,7 @@ pub struct BufferReadProvider {
 }
 
 impl BufferReadProvider {
-    pub fn new<T: 'static + ReadSeek>(mut reader: T) -> BufferReadProvider {
+    pub fn new<T: 'static + Read + Seek + Send>(mut reader: T) -> BufferReadProvider {
         let (snd, rcv) = unbounded::<ReadCommand>();
 
         let handle = thread::spawn(move || {
@@ -103,14 +100,16 @@ impl BufferReadProvider {
     }
 }
 
-fn get_reader_len<T: ReadSeek>(reader: &mut T) -> Result<u64, MIDILoadError> {
+fn get_reader_len<T: Seek>(reader: &mut T) -> Result<u64, MIDILoadError> {
     let pos = reader.seek(SeekFrom::End(0))?;
     reader.seek(SeekFrom::Start(0))?;
     Ok(pos)
 }
 
 impl DiskReader {
-    pub fn new<T: 'static + ReadSeek>(mut reader: T) -> Result<DiskReader, MIDILoadError> {
+    pub fn new<T: 'static + Read + Seek + Send>(
+        mut reader: T,
+    ) -> Result<DiskReader, MIDILoadError> {
         let len = get_reader_len(&mut reader);
         let reader = BufferReadProvider::new(reader);
 
@@ -125,7 +124,7 @@ impl DiskReader {
 }
 
 impl RAMReader {
-    pub fn new<T: ReadSeek>(mut reader: T) -> Result<RAMReader, MIDILoadError> {
+    pub fn new<T: Read + Seek>(mut reader: T) -> Result<RAMReader, MIDILoadError> {
         let len = get_reader_len(&mut reader);
 
         match len {

@@ -23,9 +23,6 @@ use super::{
     track_parser::TrackParser,
 };
 
-pub trait ReadSeek: Debug + Read + Seek + Send {}
-impl ReadSeek for File {}
-
 #[derive(Debug)]
 struct TrackPos {
     pos: u64,
@@ -206,7 +203,7 @@ impl MIDIFile<DiskReader> {
         MIDIFile::new_from_disk_reader(reader, read_progress)
     }
 
-    pub fn open_from_stream<T: 'static + ReadSeek>(
+    pub fn open_from_stream<T: 'static + Read + Seek + Send>(
         stream: T,
         read_progress: Option<&mut dyn FnMut(u32)>,
     ) -> Result<Self, MIDILoadError> {
@@ -227,7 +224,7 @@ impl MIDIFile<RAMReader> {
         MIDIFile::new_from_disk_reader(reader, read_progress)
     }
 
-    pub fn open_from_stream_in_ram<T: 'static + ReadSeek>(
+    pub fn open_from_stream_in_ram<T: 'static + Read + Seek + Send>(
         stream: T,
         read_progress: Option<&mut dyn FnMut(u32)>,
     ) -> Result<Self, MIDILoadError> {
