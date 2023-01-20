@@ -43,7 +43,7 @@ impl TextEventKind {
             9 => TextEventKind::DeviceName,
             10 => TextEventKind::Undefined,
             0x7F => TextEventKind::MetaEvent,
-            _ => panic!("Unrecognized text event kind received: {}", val),
+            _ => TextEventKind::Undefined,
         }
     }
 }
