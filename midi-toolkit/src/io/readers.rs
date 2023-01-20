@@ -1,15 +1,13 @@
 use crossbeam_channel::{bounded, unbounded, Sender};
 use std::{
-    io::{self, SeekFrom, Read, Seek},
+    io::{self, Read, Seek, SeekFrom},
     sync::Arc,
     thread::{self, JoinHandle},
 };
 
 use crate::DelayedReceiver;
 
-use super::{
-    errors::{MIDILoadError, MIDIParseError},
-};
+use super::errors::{MIDILoadError, MIDIParseError};
 
 use std::fmt::Debug;
 #[derive(Debug)]
@@ -109,7 +107,9 @@ fn get_reader_len<T: Seek>(reader: &mut T) -> Result<u64, MIDILoadError> {
 }
 
 impl DiskReader {
-    pub fn new<T: 'static + Read + Seek + Send>(mut reader: T) -> Result<DiskReader, MIDILoadError> {
+    pub fn new<T: 'static + Read + Seek + Send>(
+        mut reader: T,
+    ) -> Result<DiskReader, MIDILoadError> {
         let len = get_reader_len(&mut reader);
         let reader = BufferReadProvider::new(reader);
 
