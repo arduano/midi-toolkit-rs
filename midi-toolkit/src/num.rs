@@ -57,6 +57,7 @@ pub trait MIDINumFrom<T: MIDINum> {
 pub trait MIDINum:
     Num
     + PartialOrd
+    + PartialEq
     + AddAssign
     + SubAssign
     + DivAssign
@@ -80,6 +81,8 @@ pub trait MIDINum:
     + MIDINumInto<u32>
     + MIDINumInto<u64>
 {
+    fn saturating_add(self, other: Self) -> Self;
+    fn saturating_sub(self, other: Self) -> Self;
 }
 
 macro_rules! impl_delta_from_to {
@@ -116,12 +119,40 @@ impl_delta_from!(u64);
 impl_delta_from!(f32);
 impl_delta_from!(f64);
 
-impl MIDINum for i32 {}
-impl MIDINum for u32 {}
-impl MIDINum for i64 {}
-impl MIDINum for u64 {}
-impl MIDINum for f32 {}
-impl MIDINum for f64 {}
+macro_rules! impl_midi_num_for_int {
+    ($int:ident) => {
+        impl MIDINum for $int {
+            fn saturating_add(self, other: Self) -> Self {
+                self.saturating_add(other)
+            }
+
+            fn saturating_sub(self, other: Self) -> Self {
+                self.saturating_sub(other)
+            }
+        }
+    };
+}
+
+macro_rules! impl_midi_num_for_float {
+    ($int:ident) => {
+        impl MIDINum for $int {
+            fn saturating_add(self, other: Self) -> Self {
+                self + other
+            }
+
+            fn saturating_sub(self, other: Self) -> Self {
+                self - other
+            }
+        }
+    };
+}
+
+impl_midi_num_for_int!(i32);
+impl_midi_num_for_int!(u32);
+impl_midi_num_for_int!(i64);
+impl_midi_num_for_int!(u64);
+impl_midi_num_for_float!(f32);
+impl_midi_num_for_float!(f64);
 
 #[cfg(test)]
 mod tests {

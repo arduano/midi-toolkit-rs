@@ -2,12 +2,11 @@ use std::io::Write;
 
 use crate::{io::MIDIWriteError, num::MIDINum};
 pub use event::Event;
-pub use events::*;
+pub use event_variants::*;
 
 mod event;
 
-#[allow(clippy::module_inception)]
-mod events;
+mod event_variants;
 
 pub fn encode_var_length_value(mut val: u64) -> Vec<u8> {
     let mut vec = Vec::new();

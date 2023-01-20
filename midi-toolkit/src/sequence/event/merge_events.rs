@@ -38,7 +38,7 @@ impl<D: MIDINum, E: MIDIDelta<D>, Err, I: Iterator<Item = Result<E, Err>> + Size
         match self {
             Sequence::HasNext { iter, next, .. } => match iter.next() {
                 Some(Ok(mut iter_next)) => {
-                    let new_time = next.delta() + iter_next.delta();
+                    let new_time = next.delta().saturating_add(iter_next.delta());
                     iter_next.set_delta(new_time);
                     let old_next = std::mem::replace(next, iter_next);
                     Ok(Some(old_next))
@@ -74,169 +74,142 @@ impl<D: MIDINum, E: MIDIDelta<D>, Err, I: Iterator<Item = Result<E, Err>> + Size
     }
 }
 
-enum BinaryCellState<D: MIDINum, E: MIDIDelta<D>, Err, I: Iterator<Item = Result<E, Err>> + Sized> {
-    Sequence(Sequence<D, E, Err, I>),
-    Item { item: Option<E> },
-}
-
-impl<D: MIDINum, E: MIDIDelta<D>, Err, I: Iterator<Item = Result<E, Err>> + Sized>
-    BinaryCellState<D, E, Err, I>
-{
-    /// Function to make building the tree easier
-    fn inner_sequence_or_panic(&mut self) -> &mut Sequence<D, E, Err, I> {
-        match self {
-            BinaryCellState::Sequence(seq) => seq,
-            _ => panic!("Expected Sequence"),
-        }
-    }
-
-    fn time(&self) -> Option<D> {
-        match self {
-            BinaryCellState::Sequence(seq) => seq.time(),
-            BinaryCellState::Item { item } => item.as_ref().map(|item| item.delta()),
-        }
-    }
-}
-
-struct BinaryIteratorTree<
+struct BinaryTreeSequenceMerge<
     D: MIDINum,
     E: MIDIDelta<D>,
     Err,
     I: Iterator<Item = Result<E, Err>> + Sized,
 > {
-    heap: Vec<BinaryCellState<D, E, Err, I>>,
+    sequences: Vec<Sequence<D, E, Err, I>>,
+    heap: Vec<Option<D>>,
 }
 
 impl<D: MIDINum, E: MIDIDelta<D>, Err, I: Iterator<Item = Result<E, Err>> + Sized>
-    BinaryIteratorTree<D, E, Err, I>
+    BinaryTreeSequenceMerge<D, E, Err, I>
 {
-    fn new(mut iters: impl Iterator<Item = I>) -> Result<Self, Err> {
-        let first = if let Some(first) = iters.next() {
-            Sequence::new(first)?
-        } else {
-            Sequence::Empty
-        };
+    fn new(iters: impl Iterator<Item = I>) -> Result<Self, Err> {
+        let mut sequences = vec![];
 
-        let mut heap_vec = vec![BinaryCellState::Sequence(first)];
-
-        let triangulate_child = |current: &mut BinaryCellState<D, E, Err, I>,
-                                 child1: &mut Sequence<D, E, Err, I>|
-         -> Result<Option<Sequence<D, E, Err, I>>, Err> {
-            let current_seq = current.inner_sequence_or_panic();
-
-            let child1_time = match child1.time() {
-                Some(time) => time,
-                None => return Ok(None),
-            };
-            let current_time = current_seq.time().expect("Current node shouldn't be empty");
-
-            let next = if current_time <= child1_time {
-                current_seq.next()?
-            } else {
-                child1.next()?
-            };
-            let next = next.expect("Can't be empty here");
-
-            let new_parent = BinaryCellState::Item { item: Some(next) };
-
-            let child2 = match std::mem::replace(current, new_parent) {
-                BinaryCellState::Sequence(seq) => seq,
-                _ => unreachable!(),
-            };
-
-            Ok(Some(child2))
-        };
-
-        let mut i = 0;
         for iter in iters {
-            let mut new_sequence = Sequence::new(iter)?;
-
-            let current = heap_vec[i].inner_sequence_or_panic();
-            if current.is_empty() {
-                *current = new_sequence;
-                continue;
-            }
-
-            let next_child = triangulate_child(&mut heap_vec[i], &mut new_sequence)?;
-
-            if let Some(next_child) = next_child {
-                heap_vec.push(BinaryCellState::Sequence(new_sequence));
-                heap_vec.push(BinaryCellState::Sequence(next_child));
-                i += 1;
+            let seq = Sequence::new(iter)?;
+            if !seq.is_empty() {
+                sequences.push(seq);
             }
         }
 
-        Ok(Self { heap: heap_vec })
+        if sequences.is_empty() {
+            sequences.push(Sequence::Empty);
+        }
+
+        let heap = vec![None; sequences.len() - 1];
+
+        let mut tree = Self { heap, sequences };
+
+        for i in (0..tree.heap.len()).rev() {
+            tree.update_time_from_children_for(i);
+        }
+
+        Ok(tree)
     }
 
-    fn inner_get_time(&mut self, index: usize) -> Result<Option<D>, Err> {
-        let current = match self.heap.get(index) {
-            Some(current) => current,
-            None => return Ok(None),
-        };
-
-        Ok(current.time())
-    }
-
-    fn inner_recursive_get_next(&mut self, index: usize) -> Result<Option<E>, Err> {
-        let current = match self.heap.get_mut(index) {
-            Some(current) => current,
-            None => return Ok(None),
-        };
-
-        let item = match current {
-            BinaryCellState::Sequence(seq) => return seq.next(),
-
-            // Item nodes are handled below
-            BinaryCellState::Item { item } => item,
-        };
-
-        let inner_item = if let Some(item) = item.take() {
-            item
+    fn get_time_for(&self, index: usize) -> Option<D> {
+        if index >= self.heap.len() {
+            let index = index - self.heap.len();
+            self.sequences.get(index).and_then(|x| x.time())
         } else {
-            return Ok(None);
-        };
+            self.heap.get(index).and_then(|x| *x)
+        }
+    }
 
-        let left_child_index = 2 * index + 1;
-        let right_child_index = 2 * index + 2;
+    fn calculate_time_from_children_for(&self, index: usize) -> Option<D> {
+        let left = index * 2 + 1;
+        let right = index * 2 + 2;
 
-        let left_child_time = self.inner_get_time(left_child_index)?;
-        let right_child_time = self.inner_get_time(right_child_index)?;
+        let left_time = self.get_time_for(left);
+        let right_time = self.get_time_for(right);
 
-        let next = match (left_child_time, right_child_time) {
-            (None, None) => {
-                return Ok(Some(inner_item));
-            }
-            (Some(_), None) => self.inner_recursive_get_next(left_child_index)?.unwrap(),
-            (None, Some(_)) => self.inner_recursive_get_next(right_child_index)?.unwrap(),
-            (Some(left_child_time), Some(right_child_time)) => {
-                if left_child_time <= right_child_time {
-                    self.inner_recursive_get_next(left_child_index)?.unwrap()
+        match (left_time, right_time) {
+            (Some(left_time), Some(right_time)) => {
+                if left_time < right_time {
+                    Some(left_time)
                 } else {
-                    self.inner_recursive_get_next(right_child_index)?.unwrap()
+                    Some(right_time)
                 }
             }
-        };
+            (Some(left_time), None) => Some(left_time),
+            (None, Some(right_time)) => Some(right_time),
+            (None, None) => None,
+        }
+    }
 
-        // Need to get current again so that rust doesn't complain about mut reference
-        match self.heap.get_mut(index).unwrap() {
-            BinaryCellState::Sequence(_) => unreachable!(),
-            BinaryCellState::Item { item } => *item = Some(next),
-        };
+    fn update_time_from_children_for(&mut self, index: usize) -> Option<D> {
+        let time = self.calculate_time_from_children_for(index);
+        self.heap[index] = time;
+        time
+    }
 
-        Ok(Some(inner_item))
+    fn propagate_time_change_from(&mut self, index: usize) {
+        let mut index = index;
+        while index > 0 {
+            index = (index - 1) / 2;
+            self.update_time_from_children_for(index);
+        }
+    }
+
+    fn find_smallest_sequence_index(&self) -> Option<usize> {
+        #[allow(clippy::question_mark)]
+        // Empty if the root time is None
+        if self.get_time_for(0).is_none() {
+            return None;
+        }
+
+        let mut index = 0;
+        loop {
+            if index >= self.heap.len() {
+                return Some(index - self.heap.len());
+            }
+
+            let left = index * 2 + 1;
+            let right = index * 2 + 2;
+
+            let left_time = self.get_time_for(left);
+            let right_time = self.get_time_for(right);
+
+            let next_index = match (left_time, right_time) {
+                (Some(left_time), Some(right_time)) => {
+                    if left_time < right_time {
+                        left
+                    } else {
+                        right
+                    }
+                }
+                (Some(_), None) => left,
+                (None, Some(_)) => right,
+                (None, None) => unreachable!(),
+            };
+
+            index = next_index;
+        }
     }
 
     fn next(&mut self) -> Result<Option<E>, Err> {
-        self.inner_recursive_get_next(0)
+        let index = self.find_smallest_sequence_index();
+        if let Some(index) = index {
+            let sequence = &mut self.sequences[index];
+            let item = sequence.next()?.unwrap();
+
+            self.propagate_time_change_from(index + self.heap.len());
+
+            Ok(Some(item))
+        } else {
+            Ok(None)
+        }
     }
 
+    #[inline(always)]
     fn assert_all_empty(&self) {
-        for cell in &self.heap {
-            match cell {
-                BinaryCellState::Sequence(seq) => assert!(seq.is_empty()),
-                BinaryCellState::Item { item } => assert!(item.is_none()),
-            }
+        for seq in &self.sequences {
+            debug_assert!(seq.is_empty());
         }
     }
 }
@@ -251,7 +224,7 @@ pub fn merge_events_array<
     array: Vec<I>,
 ) -> impl Iterator<Item = Result<E, Err>> {
     GenIter(move || {
-        let tree = BinaryIteratorTree::new(array.into_iter());
+        let tree = BinaryTreeSequenceMerge::new(array.into_iter());
         match tree {
             Err(e) => yield_error!(Err(e)),
             Ok(mut tree) => {

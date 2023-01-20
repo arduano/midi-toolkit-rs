@@ -1,16 +1,13 @@
 use crossbeam_channel::{bounded, unbounded, Sender};
 use std::{
-    io::{self, SeekFrom},
+    io::{self, Read, Seek, SeekFrom},
     sync::Arc,
     thread::{self, JoinHandle},
 };
 
 use crate::DelayedReceiver;
 
-use super::{
-    errors::{MIDILoadError, MIDIParseError},
-    midi_file::ReadSeek,
-};
+use super::errors::{MIDILoadError, MIDIParseError};
 
 use std::fmt::Debug;
 #[derive(Debug)]
@@ -26,7 +23,7 @@ pub struct RAMReader {
 }
 
 pub struct ReadCommand {
-    destination: Arc<Sender<Result<Vec<u8>, io::Error>>>,
+    destination: Sender<Result<Vec<u8>, io::Error>>,
     buffer: Vec<u8>,
     start: u64,
     length: usize,
@@ -39,7 +36,7 @@ pub struct BufferReadProvider {
 }
 
 impl BufferReadProvider {
-    pub fn new<T: 'static + ReadSeek>(mut reader: T) -> BufferReadProvider {
+    pub fn new<T: 'static + Read + Seek + Send>(mut reader: T) -> BufferReadProvider {
         let (snd, rcv) = unbounded::<ReadCommand>();
 
         let handle = thread::spawn(move || {
@@ -78,7 +75,7 @@ impl BufferReadProvider {
 
     pub fn send_read_command(
         &self,
-        destination: Arc<Sender<Result<Vec<u8>, io::Error>>>,
+        destination: Sender<Result<Vec<u8>, io::Error>>,
         buffer: Vec<u8>,
         start: u64,
         length: usize,
@@ -97,20 +94,22 @@ impl BufferReadProvider {
         let (send, receive) = bounded::<Result<Vec<u8>, io::Error>>(1);
 
         let len = buf.len();
-        self.send_read_command(Arc::new(send), buf, start, len);
+        self.send_read_command(send, buf, start, len);
 
         receive.recv().unwrap()
     }
 }
 
-fn get_reader_len<T: ReadSeek>(reader: &mut T) -> Result<u64, MIDILoadError> {
+fn get_reader_len<T: Seek>(reader: &mut T) -> Result<u64, MIDILoadError> {
     let pos = reader.seek(SeekFrom::End(0))?;
     reader.seek(SeekFrom::Start(0))?;
     Ok(pos)
 }
 
 impl DiskReader {
-    pub fn new<T: 'static + ReadSeek>(mut reader: T) -> Result<DiskReader, MIDILoadError> {
+    pub fn new<T: 'static + Read + Seek + Send>(
+        mut reader: T,
+    ) -> Result<DiskReader, MIDILoadError> {
         let len = get_reader_len(&mut reader);
         let reader = BufferReadProvider::new(reader);
 
@@ -125,7 +124,7 @@ impl DiskReader {
 }
 
 impl RAMReader {
-    pub fn new<T: ReadSeek>(mut reader: T) -> Result<RAMReader, MIDILoadError> {
+    pub fn new<T: Read + Seek>(mut reader: T) -> Result<RAMReader, MIDILoadError> {
         let len = get_reader_len(&mut reader);
 
         match len {
@@ -236,7 +235,6 @@ pub trait TrackReader: Send + Sync {
     fn is_at_end(&self) -> bool;
 }
 
-#[allow(clippy::type_complexity)]
 pub struct DiskTrackReader {
     /// The track number used only for error logging purposes
     track_number: Option<u32>,
@@ -250,7 +248,7 @@ pub struct DiskTrackReader {
     unrequested_data_start: u64, // Relative to start
 
     receiver: DelayedReceiver<Result<Vec<u8>, io::Error>>,
-    receiver_sender: Option<Arc<Sender<Result<Vec<u8>, io::Error>>>>, // Becomes None when there's nothing left to read
+    receiver_sender: Option<Sender<Result<Vec<u8>, io::Error>>>, // Becomes None when there's nothing left to read
 }
 
 pub struct FullRamTrackReader {
@@ -374,7 +372,6 @@ impl DiskTrackReader {
         let buffer_count = 3;
 
         let (send, receive) = unbounded();
-        let send = Arc::new(send);
 
         let mut reader = DiskTrackReader {
             track_number,
