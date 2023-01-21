@@ -1,4 +1,4 @@
-use std::{cell::UnsafeCell, collections::VecDeque, rc::Rc};
+use std::{cell::Cell, collections::VecDeque, rc::Rc};
 
 use gen_iter::GenIter;
 
@@ -15,45 +15,23 @@ use crate::{
 // ==============
 
 #[derive(Debug)]
-struct UnendedContainer<T> {
-    ended: bool,
-    note: T,
+struct UnendedContainer<T: MIDINum> {
+    new_end: Cell<Option<T>>,
+    note: Note<T>,
 }
 
-impl<T> UnendedContainer<T> {
-    fn new(note: T) -> Self {
-        Self { ended: false, note }
-    }
-}
-
-// Using UnsafeCell for extra performance, because this algorithm is tested and fully safe.
-#[derive(Debug)]
-struct Shared<T>(Rc<UnsafeCell<T>>);
-
-impl<T> Shared<T> {
-    fn new(val: T) -> Self {
-        Self(Rc::new(UnsafeCell::new(val)))
-    }
-
-    #[allow(clippy::mut_from_ref)]
-    fn get(&self) -> &mut T {
-        unsafe { &mut *self.0.get() }
-    }
-
-    fn into_inner(self) -> T {
-        Rc::try_unwrap(self.0).unwrap().into_inner()
-    }
-}
-
-impl<T> Clone for Shared<T> {
-    fn clone(&self) -> Self {
-        Self(self.0.clone())
+impl<T: MIDINum> UnendedContainer<T> {
+    fn new(note: Note<T>) -> Self {
+        Self {
+            new_end: Cell::new(None),
+            note,
+        }
     }
 }
 
 struct NoteQueue<T: MIDINum> {
-    queue: VecDeque<Shared<UnendedContainer<Note<T>>>>,
-    keys: Vec<VecDeque<Shared<UnendedContainer<Note<T>>>>>,
+    queue: VecDeque<Rc<UnendedContainer<T>>>,
+    keys: Vec<VecDeque<Rc<UnendedContainer<T>>>>,
 }
 
 impl<T: MIDINum> NoteQueue<T> {
@@ -68,18 +46,14 @@ impl<T: MIDINum> NoteQueue<T> {
     }
 
     #[inline(always)]
-    fn get_queue(
-        &mut self,
-        key: u8,
-        channel: u8,
-    ) -> &mut VecDeque<Shared<UnendedContainer<Note<T>>>> {
+    fn get_queue(&mut self, key: u8, channel: u8) -> &mut VecDeque<Rc<UnendedContainer<T>>> {
         &mut self.keys[key as usize * 16 + channel as usize]
     }
 
     #[inline(always)]
     fn push(&mut self, note: Note<T>) {
         let key = self.get_queue(note.key, note.channel);
-        let note = Shared::new(UnendedContainer::new(note));
+        let note = Rc::new(UnendedContainer::new(note));
         key.push_back(note.clone());
         self.queue.push_back(note);
     }
@@ -88,9 +62,7 @@ impl<T: MIDINum> NoteQueue<T> {
     fn end_next(&mut self, key: u8, channel: u8, end: T) {
         let queue = self.get_queue(key, channel);
         if let Some(note) = queue.pop_front() {
-            let note = note.get();
-            note.ended = true;
-            note.note.len = end - note.note.start;
+            note.new_end.set(Some(end));
         }
     }
 
@@ -98,9 +70,7 @@ impl<T: MIDINum> NoteQueue<T> {
     fn end_all(&mut self, end: T) {
         for key in self.keys.iter_mut() {
             for note in key.iter_mut() {
-                let note = note.get();
-                note.ended = true;
-                note.note.len = end - note.note.start;
+                note.new_end.set(Some(end));
             }
         }
     }
@@ -109,8 +79,11 @@ impl<T: MIDINum> NoteQueue<T> {
     fn next_ended_note(&mut self) -> Option<Note<T>> {
         let next = self.queue.front();
         if let Some(next) = next {
-            if next.get().ended {
-                return Some(self.queue.pop_front().unwrap().into_inner().note);
+            if let Some(end) = next.new_end.get() {
+                let next_note = self.queue.pop_front().unwrap();
+                let mut note = Rc::try_unwrap(next_note).unwrap().note;
+                note.len = end - note.start;
+                return Some(note);
             }
         }
         None
