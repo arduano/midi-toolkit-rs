@@ -174,28 +174,24 @@ pub fn merge_notes<
     })
 }
 
-struct EventMerger<
-    D: 'static + MIDINum,
-    N: 'static + MIDINote<D> + Sync + Send,
-    Err: 'static + Sync + Send,
-> {
+struct EventMerger<D: 'static + MIDINum, N: 'static + MIDINote<D> + Send, Err: 'static + Send> {
     _phantom: std::marker::PhantomData<(D, N, Err)>,
 }
-impl<D: 'static + MIDINum, N: 'static + MIDINote<D> + Sync + Send, Err: 'static + Sync + Send>
-    MergableStreams for EventMerger<D, N, Err>
+impl<D: 'static + MIDINum, N: 'static + MIDINote<D> + Send, Err: 'static + Send> MergableStreams
+    for EventMerger<D, N, Err>
 {
     type Item = Result<N, Err>;
 
     fn merge_two(
-        iter1: impl Iterator<Item = Self::Item> + Send + Sync + 'static,
-        iter2: impl Iterator<Item = Self::Item> + Send + Sync + 'static,
-    ) -> impl Iterator<Item = Self::Item> + Send + Sync + 'static {
+        iter1: impl Iterator<Item = Self::Item> + Send + 'static,
+        iter2: impl Iterator<Item = Self::Item> + Send + 'static,
+    ) -> impl Iterator<Item = Self::Item> + Send + 'static {
         merge_notes(iter1, iter2)
     }
 
     fn merge_array(
-        array: Vec<impl Iterator<Item = Self::Item> + Send + Sync + 'static>,
-    ) -> impl Iterator<Item = Self::Item> + Send + Sync + 'static {
+        array: Vec<impl Iterator<Item = Self::Item> + Send + 'static>,
+    ) -> impl Iterator<Item = Self::Item> + Send + 'static {
         merge_notes_array(array)
     }
 }
@@ -203,9 +199,9 @@ impl<D: 'static + MIDINum, N: 'static + MIDINote<D> + Sync + Send, Err: 'static 
 /// Group tracks into separate threads and merge them together
 pub fn grouped_multithreaded_merge_note_arrays<
     T: 'static + MIDINum,
-    N: 'static + MIDINote<T> + Sync + Send,
-    Err: 'static + Sync + Send,
-    I: 'static + Iterator<Item = Result<N, Err>> + Sized + Sync + Send,
+    N: 'static + MIDINote<T> + Send,
+    Err: 'static + Send,
+    I: 'static + Iterator<Item = Result<N, Err>> + Sized + Send,
 >(
     array: Vec<I>,
 ) -> impl Iterator<Item = Result<N, Err>> {

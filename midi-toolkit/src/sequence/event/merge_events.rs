@@ -349,28 +349,24 @@ pub fn merge_events<
     })
 }
 
-struct EventMerger<
-    D: 'static + MIDINum,
-    E: 'static + MIDIDelta<D> + Sync + Send,
-    Err: 'static + Sync + Send,
-> {
+struct EventMerger<D: 'static + MIDINum, E: 'static + MIDIDelta<D> + Send, Err: 'static + Send> {
     _phantom: std::marker::PhantomData<(D, E, Err)>,
 }
-impl<D: 'static + MIDINum, E: 'static + MIDIDelta<D> + Sync + Send, Err: 'static + Sync + Send>
-    MergableStreams for EventMerger<D, E, Err>
+impl<D: 'static + MIDINum, E: 'static + MIDIDelta<D> + Send, Err: 'static + Send> MergableStreams
+    for EventMerger<D, E, Err>
 {
     type Item = Result<E, Err>;
 
     fn merge_two(
-        iter1: impl Iterator<Item = Self::Item> + Send + Sync + 'static,
-        iter2: impl Iterator<Item = Self::Item> + Send + Sync + 'static,
-    ) -> impl Iterator<Item = Self::Item> + Send + Sync + 'static {
+        iter1: impl Iterator<Item = Self::Item> + Send + 'static,
+        iter2: impl Iterator<Item = Self::Item> + Send + 'static,
+    ) -> impl Iterator<Item = Self::Item> + Send + 'static {
         merge_events(iter1, iter2)
     }
 
     fn merge_array(
-        array: Vec<impl Iterator<Item = Self::Item> + Send + Sync + 'static>,
-    ) -> impl Iterator<Item = Self::Item> + Send + Sync + 'static {
+        array: Vec<impl Iterator<Item = Self::Item> + Send + 'static>,
+    ) -> impl Iterator<Item = Self::Item> + Send + 'static {
         merge_events_array(array)
     }
 }
@@ -378,9 +374,9 @@ impl<D: 'static + MIDINum, E: 'static + MIDIDelta<D> + Sync + Send, Err: 'static
 /// Group tracks into separate threads and merge them together
 pub fn grouped_multithreaded_merge_event_arrays<
     D: 'static + MIDINum,
-    E: 'static + MIDIDelta<D> + Sync + Send,
-    Err: 'static + Sync + Send,
-    I: 'static + Iterator<Item = Result<E, Err>> + Sized + Sync + Send,
+    E: 'static + MIDIDelta<D> + Send,
+    Err: 'static + Send,
+    I: 'static + Iterator<Item = Result<E, Err>> + Sized + Send,
 >(
     array: Vec<I>,
 ) -> impl Iterator<Item = Result<E, Err>> {

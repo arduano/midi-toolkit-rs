@@ -192,8 +192,8 @@ pub fn get_channel_statistics<D: MIDINum, E: MIDIEventEnum + MIDIDelta<D>, Err>(
 pub fn get_channels_array_statistics<
     D: MIDINum,
     E: MIDIEventEnum + MIDIDelta<D>,
-    Err: Send + Sync,
-    I: Iterator<Item = Result<E, Err>> + Sized + Send + Sync,
+    Err: Send,
+    I: Iterator<Item = Result<E, Err>> + Sized + Send,
 >(
     iters: Vec<I>,
 ) -> Result<ChannelGroupStatistics<D>, Err> {

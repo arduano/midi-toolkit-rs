@@ -3,20 +3,20 @@ use crate::pipe;
 use super::{threaded_buffer, to_vec};
 
 pub trait MergableStreams {
-    type Item: Send + Sync + 'static;
+    type Item: Send + 'static;
 
     fn merge_two(
-        iter1: impl Iterator<Item = Self::Item> + Send + Sync + 'static,
-        iter2: impl Iterator<Item = Self::Item> + Send + Sync + 'static,
-    ) -> impl Iterator<Item = Self::Item> + Send + Sync + 'static;
+        iter1: impl Iterator<Item = Self::Item> + Send + 'static,
+        iter2: impl Iterator<Item = Self::Item> + Send + 'static,
+    ) -> impl Iterator<Item = Self::Item> + Send + 'static;
 
     fn merge_array(
-        array: Vec<impl Iterator<Item = Self::Item> + Send + Sync + 'static>,
-    ) -> impl Iterator<Item = Self::Item> + Send + Sync + 'static;
+        array: Vec<impl Iterator<Item = Self::Item> + Send + 'static>,
+    ) -> impl Iterator<Item = Self::Item> + Send + 'static;
 }
 
 pub fn grouped_multithreaded_merge<T: MergableStreams>(
-    mut array: Vec<impl Iterator<Item = T::Item> + Send + Sync + 'static>,
+    mut array: Vec<impl Iterator<Item = T::Item> + Send + 'static>,
 ) -> impl Iterator<Item = T::Item> {
     {
         let buffer_size = 1 << 20;

@@ -34,10 +34,7 @@ impl<T> Iterator for ThreadBufferIter<T> {
     }
 }
 
-pub fn threaded_buffer<
-    T: 'static + Send + Sync,
-    I: 'static + Iterator<Item = T> + Sized + Send + Sync,
->(
+pub fn threaded_buffer<T: 'static + Send, I: 'static + Iterator<Item = T> + Send>(
     iter: I,
     buffer_size: usize,
 ) -> ThreadBufferIter<T> {
@@ -82,9 +79,9 @@ pub fn threaded_buffer<
 }
 
 pub fn channels_into_threadpool<
-    T: 'static + Send + Sync,
-    E: 'static + Send + Sync,
-    I: 'static + Iterator<Item = Result<T, E>> + Sized + Send + Sync,
+    T: 'static + Send,
+    E: 'static + Send,
+    I: 'static + Iterator<Item = Result<T, E>> + Send + Sync,
 >(
     iters: Vec<I>,
     buffer_size: usize,
