@@ -9,4 +9,3 @@ pub use cast_delta::*;
 mod threaded_buffer;
 pub use threaded_buffer::*;
 mod merge_threaded;
-pub use merge_threaded::*;

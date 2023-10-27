@@ -69,7 +69,7 @@ pub fn merge_notes_array<
                     }
                     Some(next) => {
                         let next = unwrap!(next);
-                        let mut smallest = &mut sequences[smallest_index];
+                        let smallest = &mut sequences[smallest_index];
                         smallest.time = next.start();
                         smallest.next = Some(next);
                     }
@@ -120,7 +120,7 @@ pub fn merge_notes<
     }
 
     fn move_next<T: MIDINum, N: MIDINote<T>, Err, I: Iterator<Item = Result<N, Err>> + Sized>(
-        mut seq: &mut SeqTime<T, N, Err, I>,
+        seq: &mut SeqTime<T, N, Err, I>,
     ) -> Result<(), Err> {
         let next = seq.iter.next();
         let next = match next {

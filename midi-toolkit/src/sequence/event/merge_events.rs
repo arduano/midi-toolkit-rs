@@ -285,7 +285,7 @@ pub fn merge_events<
     }
 
     fn move_next<D: MIDINum, E: MIDIDelta<D>, Err, I: Iterator<Item = Result<E, Err>> + Sized>(
-        mut seq: &mut SeqTime<D, E, Err, I>,
+        seq: &mut SeqTime<D, E, Err, I>,
     ) -> Result<(), Err> {
         let next = seq.iter.next();
         let next = match next {

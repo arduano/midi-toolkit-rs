@@ -72,9 +72,8 @@ checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
 
 [[package]]
 name = "gen-iter"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94e0a87e769349d9ff0c7c897dfcce1b30e4afbbc72b92f3888dd449d26324a6"
+version = "0.4.0"
+source = "git+https://github.com/arduano/gen-iter.git?rev=64e28bc#64e28bc74b406030ff9bb3a3726a770a8fb4f78b"
 
 [[package]]
 name = "hermit-abi"

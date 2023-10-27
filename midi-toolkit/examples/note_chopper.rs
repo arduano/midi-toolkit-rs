@@ -1,4 +1,4 @@
-#![feature(generators)]
+#![feature(coroutines)]
 
 use gen_iter::GenIter;
 use midi_toolkit::{

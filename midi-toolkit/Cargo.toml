@@ -5,12 +5,12 @@ edition = "2018"
 workspace = ".."
 
 [lib]
-name="midi_toolkit"
+name = "midi_toolkit"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-gen-iter = "0.2.0"
+gen-iter = { git = "https://github.com/arduano/gen-iter.git", rev = "64e28bc" }
 num-traits = "0.2.14"
 derive = { path = "../midi-toolkit-derive", package = "midi-toolkit-rs-derive" }
 crossbeam-channel = "0.5.1"

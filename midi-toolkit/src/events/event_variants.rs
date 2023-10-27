@@ -216,8 +216,7 @@ pub struct SystemExclusiveMessageEvent {
 
 impl SerializeEvent for SystemExclusiveMessageEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
-        let mut vec = Vec::new();
-        vec.reserve(self.data.len() + 2);
+        let mut vec = Vec::with_capacity(self.data.len() + 2);
         vec.push(0xF0u8);
         for v in self.data.iter() {
             vec.push(*v);
@@ -305,8 +304,7 @@ pub struct TextEvent {
 
 impl SerializeEvent for TextEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
-        let mut vec = Vec::new();
-        vec.reserve(self.bytes.len() + 2);
+        let mut vec = Vec::with_capacity(self.bytes.len() + 2);
         vec.push(0xFF);
         vec.push(self.kind as u8);
         vec.append(&mut encode_var_length_value(self.bytes.len() as u64));
@@ -325,8 +323,7 @@ pub struct UnknownMetaEvent {
 
 impl SerializeEvent for UnknownMetaEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
-        let mut vec = Vec::new();
-        vec.reserve(self.bytes.len() + 2);
+        let mut vec = Vec::with_capacity(self.bytes.len() + 2);
         vec.push(0xFF);
         vec.push(self.kind);
         vec.append(&mut encode_var_length_value(self.bytes.len() as u64));

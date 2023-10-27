@@ -91,7 +91,7 @@ pub fn merge_notes_iterator<
                     }
                     Some(next) => {
                         let next = unwrap!(next);
-                        let mut smallest = &mut sequences[smallest_index];
+                        let smallest = &mut sequences[smallest_index];
                         smallest.time = next.start();
                         smallest.next = Some(next);
                     }
