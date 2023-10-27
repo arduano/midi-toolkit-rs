@@ -1,11 +1,9 @@
 use gen_iter::GenIter;
 
 use crate::{
-    grouped_multithreaded_merge,
     notes::MIDINote,
     num::MIDINum,
-    pipe,
-    sequence::{threaded_buffer, to_vec},
+    sequence::{grouped_multithreaded_merge, MergableStreams},
     unwrap, yield_error,
 };
 
@@ -176,6 +174,32 @@ pub fn merge_notes<
     })
 }
 
+struct EventMerger<
+    D: 'static + MIDINum,
+    N: 'static + MIDINote<D> + Sync + Send,
+    Err: 'static + Sync + Send,
+> {
+    _phantom: std::marker::PhantomData<(D, N, Err)>,
+}
+impl<D: 'static + MIDINum, N: 'static + MIDINote<D> + Sync + Send, Err: 'static + Sync + Send>
+    MergableStreams for EventMerger<D, N, Err>
+{
+    type Item = Result<N, Err>;
+
+    fn merge_two(
+        iter1: impl Iterator<Item = Self::Item> + Send + Sync + 'static,
+        iter2: impl Iterator<Item = Self::Item> + Send + Sync + 'static,
+    ) -> impl Iterator<Item = Self::Item> + Send + Sync + 'static {
+        merge_notes(iter1, iter2)
+    }
+
+    fn merge_array(
+        array: Vec<impl Iterator<Item = Self::Item> + Send + Sync + 'static>,
+    ) -> impl Iterator<Item = Self::Item> + Send + Sync + 'static {
+        merge_notes_array(array)
+    }
+}
+
 /// Group tracks into separate threads and merge them together
 pub fn grouped_multithreaded_merge_note_arrays<
     T: 'static + MIDINum,
@@ -183,7 +207,7 @@ pub fn grouped_multithreaded_merge_note_arrays<
     Err: 'static + Sync + Send,
     I: 'static + Iterator<Item = Result<N, Err>> + Sized + Sync + Send,
 >(
-    mut array: Vec<I>,
+    array: Vec<I>,
 ) -> impl Iterator<Item = Result<N, Err>> {
-    grouped_multithreaded_merge!(array, merge_notes, merge_notes_array)
+    grouped_multithreaded_merge::<EventMerger<T, N, Err>>(array)
 }

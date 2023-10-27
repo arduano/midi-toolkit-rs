@@ -2,10 +2,8 @@ use gen_iter::GenIter;
 
 use crate::{
     events::MIDIDelta,
-    grouped_multithreaded_merge,
     num::MIDINum,
-    pipe,
-    sequence::{threaded_buffer, to_vec},
+    sequence::{grouped_multithreaded_merge, MergableStreams},
     unwrap, yield_error,
 };
 
@@ -351,6 +349,32 @@ pub fn merge_events<
     })
 }
 
+struct EventMerger<
+    D: 'static + MIDINum,
+    E: 'static + MIDIDelta<D> + Sync + Send,
+    Err: 'static + Sync + Send,
+> {
+    _phantom: std::marker::PhantomData<(D, E, Err)>,
+}
+impl<D: 'static + MIDINum, E: 'static + MIDIDelta<D> + Sync + Send, Err: 'static + Sync + Send>
+    MergableStreams for EventMerger<D, E, Err>
+{
+    type Item = Result<E, Err>;
+
+    fn merge_two(
+        iter1: impl Iterator<Item = Self::Item> + Send + Sync + 'static,
+        iter2: impl Iterator<Item = Self::Item> + Send + Sync + 'static,
+    ) -> impl Iterator<Item = Self::Item> + Send + Sync + 'static {
+        merge_events(iter1, iter2)
+    }
+
+    fn merge_array(
+        array: Vec<impl Iterator<Item = Self::Item> + Send + Sync + 'static>,
+    ) -> impl Iterator<Item = Self::Item> + Send + Sync + 'static {
+        merge_events_array(array)
+    }
+}
+
 /// Group tracks into separate threads and merge them together
 pub fn grouped_multithreaded_merge_event_arrays<
     D: 'static + MIDINum,
@@ -358,7 +382,7 @@ pub fn grouped_multithreaded_merge_event_arrays<
     Err: 'static + Sync + Send,
     I: 'static + Iterator<Item = Result<E, Err>> + Sized + Sync + Send,
 >(
-    mut array: Vec<I>,
+    array: Vec<I>,
 ) -> impl Iterator<Item = Result<E, Err>> {
-    grouped_multithreaded_merge!(array, merge_events, merge_events_array)
+    grouped_multithreaded_merge::<EventMerger<D, E, Err>>(array)
 }
