@@ -51,51 +51,54 @@ impl<D: MIDINum> PartialOrd for NoteOffHolder<D> {
 pub fn notes_to_events<D: MIDINum, N: MIDINote<D>, Err>(
     iter: impl Iterator<Item = Result<N, Err>> + Sized,
 ) -> impl Iterator<Item = Result<Delta<D, Event>, Err>> {
-    GenIter(move || {
-        let mut note_offs = BinaryHeap::<NoteOffHolder<D>>::new();
+    GenIter(
+        #[coroutine]
+        move || {
+            let mut note_offs = BinaryHeap::<NoteOffHolder<D>>::new();
 
-        let mut prev_time = D::zero();
+            let mut prev_time = D::zero();
 
-        for note in iter {
-            let note = unwrap!(note);
+            for note in iter {
+                let note = unwrap!(note);
 
-            while let Some(e) = note_offs.peek() {
-                if e.0.delta <= note.start() {
-                    let holder = note_offs.pop().unwrap();
-                    let mut e = holder.into_event();
-                    let time = e.delta;
-                    e.delta -= prev_time;
-                    prev_time = time;
-                    yield Ok(e);
-                } else {
-                    break;
+                while let Some(e) = note_offs.peek() {
+                    if e.0.delta <= note.start() {
+                        let holder = note_offs.pop().unwrap();
+                        let mut e = holder.into_event();
+                        let time = e.delta;
+                        e.delta -= prev_time;
+                        prev_time = time;
+                        yield Ok(e);
+                    } else {
+                        break;
+                    }
                 }
+
+                yield Ok(Event::new_delta_note_on_event(
+                    note.start() - prev_time,
+                    note.channel(),
+                    note.key(),
+                    note.velocity(),
+                ));
+
+                prev_time = note.start();
+
+                let time = note.end();
+                let off = NoteOffEvent::new(note.channel(), note.key());
+                let holder = NoteOffHolder::new(time, off);
+
+                note_offs.push(holder);
             }
 
-            yield Ok(Event::new_delta_note_on_event(
-                note.start() - prev_time,
-                note.channel(),
-                note.key(),
-                note.velocity(),
-            ));
-
-            prev_time = note.start();
-
-            let time = note.end();
-            let off = NoteOffEvent::new(note.channel(), note.key());
-            let holder = NoteOffHolder::new(time, off);
-
-            note_offs.push(holder);
-        }
-
-        while let Some(holder) = note_offs.pop() {
-            let mut e = holder.into_event();
-            let time = e.delta;
-            e.delta -= prev_time;
-            prev_time = time;
-            yield Ok(e);
-        }
-    })
+            while let Some(holder) = note_offs.pop() {
+                let mut e = holder.into_event();
+                let time = e.delta;
+                e.delta -= prev_time;
+                prev_time = time;
+                yield Ok(e);
+            }
+        },
+    )
 }
 
 #[cfg(test)]
