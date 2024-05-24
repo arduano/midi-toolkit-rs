@@ -109,51 +109,60 @@ impl<E: MIDIEventEnum> BatchTempo for EventBatch<E> {
 pub fn convert_events_into_batches<D: MIDINum, E, Err>(
     iter: impl Iterator<Item = Result<Delta<D, E>, Err>>,
 ) -> impl Iterator<Item = Result<Delta<D, EventBatch<E>>, Err>> {
-    GenIter(move || {
-        let mut next_batch = Delta::new(D::zero(), EventBatch::new(Vec::new()));
-        for e in iter {
-            let e = unwrap!(e);
-            if e.delta() > D::zero() {
-                if !next_batch.events.is_empty() {
-                    yield Ok(next_batch);
+    GenIter(
+        #[coroutine]
+        move || {
+            let mut next_batch = Delta::new(D::zero(), EventBatch::new(Vec::new()));
+            for e in iter {
+                let e = unwrap!(e);
+                if e.delta() > D::zero() {
+                    if !next_batch.events.is_empty() {
+                        yield Ok(next_batch);
+                    }
+                    next_batch = Delta::new(e.delta(), EventBatch::new(Vec::new()));
                 }
-                next_batch = Delta::new(e.delta(), EventBatch::new(Vec::new()));
+                next_batch.events.push(e.event);
             }
-            next_batch.events.push(e.event);
-        }
-        if !next_batch.events.is_empty() {
-            yield Ok(next_batch);
-        }
-    })
+            if !next_batch.events.is_empty() {
+                yield Ok(next_batch);
+            }
+        },
+    )
 }
 
 pub fn flatten_batches_to_events<D: MIDINum, E: MIDIEvent, Err>(
     iter: impl Iterator<Item = Result<Delta<D, EventBatch<E>>, Err>>,
 ) -> impl Iterator<Item = Result<Delta<D, E>, Err>> {
-    GenIter(move || {
-        for batch in iter {
-            let batch = unwrap!(batch);
-            let mut delta = batch.delta;
-            for event in batch.event.into_iter_inner() {
-                yield Ok(Delta::new(delta, event));
-                delta = D::zero();
+    GenIter(
+        #[coroutine]
+        move || {
+            for batch in iter {
+                let batch = unwrap!(batch);
+                let mut delta = batch.delta;
+                for event in batch.event.into_iter_inner() {
+                    yield Ok(Delta::new(delta, event));
+                    delta = D::zero();
+                }
             }
-        }
-    })
+        },
+    )
 }
 
 pub fn flatten_track_batches_to_events<D: MIDINum, E: MIDIEvent, Err>(
     iter: impl Iterator<Item = Result<Delta<D, Track<EventBatch<E>>>, Err>>,
 ) -> impl Iterator<Item = Result<Delta<D, Track<E>>, Err>> {
-    GenIter(move || {
-        for batch in iter {
-            let batch = unwrap!(batch);
-            let track = batch.event.track;
-            let mut delta = batch.delta;
-            for event in batch.event.inner_event().into_iter_inner() {
-                yield Ok(Delta::new(delta, Track::new(event, track)));
-                delta = D::zero();
+    GenIter(
+        #[coroutine]
+        move || {
+            for batch in iter {
+                let batch = unwrap!(batch);
+                let track = batch.event.track;
+                let mut delta = batch.delta;
+                for event in batch.event.inner_event().into_iter_inner() {
+                    yield Ok(Delta::new(delta, Track::new(event, track)));
+                    delta = D::zero();
+                }
             }
-        }
-    })
+        },
+    )
 }

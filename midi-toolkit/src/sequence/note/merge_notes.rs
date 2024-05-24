@@ -22,62 +22,65 @@ pub fn merge_notes_array<
 >(
     array: Vec<I>,
 ) -> impl Iterator<Item = Result<N, Err>> {
-    GenIter(move || {
-        let mut sequences = Vec::new();
-        for mut seq in array.into_iter() {
-            let first = seq.next();
-            match first {
-                None => continue,
-                Some(e) => match e {
-                    Err(e) => yield_error!(Err(e)),
-                    Ok(e) => {
-                        let s = SeqTime {
-                            time: e.start(),
-                            next: Some(e),
-                            iter: seq,
-                        };
-                        sequences.push(s);
-                    }
-                },
-            }
-        }
-
-        while !sequences.is_empty() {
-            let mut smallest_index = 0;
-            let mut smallest_time = sequences[0].time;
-            for (i, next) in sequences.iter().enumerate() {
-                if next.time < smallest_time {
-                    smallest_time = next.time;
-                    smallest_index = i;
+    GenIter(
+        #[coroutine]
+        move || {
+            let mut sequences = Vec::new();
+            for mut seq in array.into_iter() {
+                let first = seq.next();
+                match first {
+                    None => continue,
+                    Some(e) => match e {
+                        Err(e) => yield_error!(Err(e)),
+                        Ok(e) => {
+                            let s = SeqTime {
+                                time: e.start(),
+                                next: Some(e),
+                                iter: seq,
+                            };
+                            sequences.push(s);
+                        }
+                    },
                 }
             }
-            loop {
-                let (note, next) = {
-                    let smallest = &mut sequences[smallest_index];
 
-                    let note = smallest.next.take().unwrap();
+            while !sequences.is_empty() {
+                let mut smallest_index = 0;
+                let mut smallest_time = sequences[0].time;
+                for (i, next) in sequences.iter().enumerate() {
+                    if next.time < smallest_time {
+                        smallest_time = next.time;
+                        smallest_index = i;
+                    }
+                }
+                loop {
+                    let (note, next) = {
+                        let smallest = &mut sequences[smallest_index];
 
-                    (note, smallest.iter.next())
-                };
-                yield Ok(note);
-                match next {
-                    None => {
-                        sequences.remove(smallest_index);
+                        let note = smallest.next.take().unwrap();
+
+                        (note, smallest.iter.next())
+                    };
+                    yield Ok(note);
+                    match next {
+                        None => {
+                            sequences.remove(smallest_index);
+                            break;
+                        }
+                        Some(next) => {
+                            let next = unwrap!(next);
+                            let smallest = &mut sequences[smallest_index];
+                            smallest.time = next.start();
+                            smallest.next = Some(next);
+                        }
+                    }
+                    if sequences[smallest_index].time != smallest_time {
                         break;
                     }
-                    Some(next) => {
-                        let next = unwrap!(next);
-                        let smallest = &mut sequences[smallest_index];
-                        smallest.time = next.start();
-                        smallest.next = Some(next);
-                    }
-                }
-                if sequences[smallest_index].time != smallest_time {
-                    break;
                 }
             }
-        }
-    })
+        },
+    )
 }
 
 /// Merge a pair of two different event iterators together into one iterator.
@@ -135,43 +138,46 @@ pub fn merge_notes<
         Ok(())
     }
 
-    GenIter(move || {
-        let mut seq1 = unwrap!(seq_from_iter(iter1));
-        let mut seq2 = unwrap!(seq_from_iter(iter2));
+    GenIter(
+        #[coroutine]
+        move || {
+            let mut seq1 = unwrap!(seq_from_iter(iter1));
+            let mut seq2 = unwrap!(seq_from_iter(iter2));
 
-        macro_rules! flush_seq_and_return {
-            ($seq:ident) => {
-                while let Some(ev) = $seq.next.take() {
-                    yield Ok(ev);
-                    unwrap!(move_next(&mut $seq));
+            macro_rules! flush_seq_and_return {
+                ($seq:ident) => {
+                    while let Some(ev) = $seq.next.take() {
+                        yield Ok(ev);
+                        unwrap!(move_next(&mut $seq));
+                    }
+                    return;
+                };
+            }
+
+            loop {
+                if seq1.next.is_none() {
+                    if seq2.next.is_none() {
+                        break;
+                    } else {
+                        flush_seq_and_return!(seq2);
+                    }
                 }
-                return;
-            };
-        }
-
-        loop {
-            if seq1.next.is_none() {
                 if seq2.next.is_none() {
-                    break;
+                    flush_seq_and_return!(seq1);
+                }
+
+                if seq1.time < seq2.time {
+                    let ev = seq1.next.take().unwrap();
+                    yield Ok(ev);
+                    unwrap!(move_next(&mut seq1));
                 } else {
-                    flush_seq_and_return!(seq2);
+                    let ev = seq2.next.take().unwrap();
+                    yield Ok(ev);
+                    unwrap!(move_next(&mut seq2));
                 }
             }
-            if seq2.next.is_none() {
-                flush_seq_and_return!(seq1);
-            }
-
-            if seq1.time < seq2.time {
-                let ev = seq1.next.take().unwrap();
-                yield Ok(ev);
-                unwrap!(move_next(&mut seq1));
-            } else {
-                let ev = seq2.next.take().unwrap();
-                yield Ok(ev);
-                unwrap!(move_next(&mut seq2));
-            }
-        }
-    })
+        },
+    )
 }
 
 struct EventMerger<D: 'static + MIDINum, N: 'static + MIDINote<D> + Send, Err: 'static + Send> {

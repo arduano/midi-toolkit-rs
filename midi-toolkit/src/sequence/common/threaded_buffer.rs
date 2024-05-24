@@ -113,25 +113,28 @@ pub fn channels_into_threadpool<
                 .ok();
         }
 
-        output_iters.push(GenIter(move || {
-            for mut received in rx.into_iter() {
-                if received.is_empty() {
-                    break;
-                }
+        output_iters.push(GenIter(
+            #[coroutine]
+            move || {
+                for mut received in rx.into_iter() {
+                    if received.is_empty() {
+                        break;
+                    }
 
-                while let Some(item) = received.pop_front() {
-                    yield item;
-                }
+                    while let Some(item) = received.pop_front() {
+                        yield item;
+                    }
 
-                sender
-                    .send(ReadCommand {
-                        vector: received,
-                        response_sender: tx.clone(),
-                        iter_id,
-                    })
-                    .ok();
-            }
-        }));
+                    sender
+                        .send(ReadCommand {
+                            vector: received,
+                            response_sender: tx.clone(),
+                            iter_id,
+                        })
+                        .ok();
+                }
+            },
+        ));
     }
 
     thread::spawn(move || {

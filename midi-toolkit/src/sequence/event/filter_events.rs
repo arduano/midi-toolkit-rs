@@ -17,18 +17,21 @@ where
     I: Iterator<Item = Result<E, Err>> + Sized,
 {
     let mut extra_delta = D::zero();
-    GenIter(move || {
-        for e in iter {
-            let mut e = unwrap!(e);
-            if predicate(&e) {
-                e.set_delta(e.delta() + extra_delta);
-                extra_delta = D::zero();
-                yield Ok(e);
-            } else {
-                extra_delta += e.delta();
+    GenIter(
+        #[coroutine]
+        move || {
+            for e in iter {
+                let mut e = unwrap!(e);
+                if predicate(&e) {
+                    e.set_delta(e.delta() + extra_delta);
+                    extra_delta = D::zero();
+                    yield Ok(e);
+                } else {
+                    extra_delta += e.delta();
+                }
             }
-        }
-    })
+        },
+    )
 }
 
 /// Similar to [`filter_events`](crate::sequence::event::filter_events), except keeps only note on and note off events.

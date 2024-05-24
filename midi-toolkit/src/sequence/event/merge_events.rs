@@ -221,22 +221,25 @@ pub fn merge_events_array<
 >(
     array: Vec<I>,
 ) -> impl Iterator<Item = Result<E, Err>> {
-    GenIter(move || {
-        let tree = BinaryTreeSequenceMerge::new(array.into_iter());
-        match tree {
-            Err(e) => yield_error!(Err(e)),
-            Ok(mut tree) => {
-                let mut time = D::zero();
-                while let Some(mut e) = unwrap!(tree.next()) {
-                    let new_time = e.delta();
-                    e.set_delta(e.delta() - time);
-                    time = new_time;
-                    yield Ok(e);
+    GenIter(
+        #[coroutine]
+        move || {
+            let tree = BinaryTreeSequenceMerge::new(array.into_iter());
+            match tree {
+                Err(e) => yield_error!(Err(e)),
+                Ok(mut tree) => {
+                    let mut time = D::zero();
+                    while let Some(mut e) = unwrap!(tree.next()) {
+                        let new_time = e.delta();
+                        e.set_delta(e.delta() - time);
+                        time = new_time;
+                        yield Ok(e);
+                    }
+                    tree.assert_all_empty();
                 }
-                tree.assert_all_empty();
             }
-        }
-    })
+        },
+    )
 }
 
 struct SeqTime<D: MIDINum, E: MIDIDelta<D>, Err, I: Iterator<Item = Result<E, Err>> + Sized> {
@@ -300,53 +303,56 @@ pub fn merge_events<
         Ok(())
     }
 
-    GenIter(move || {
-        let mut seq1 = unwrap!(seq_from_iter(iter1));
-        let mut seq2 = unwrap!(seq_from_iter(iter2));
+    GenIter(
+        #[coroutine]
+        move || {
+            let mut seq1 = unwrap!(seq_from_iter(iter1));
+            let mut seq2 = unwrap!(seq_from_iter(iter2));
 
-        let mut time = D::zero();
+            let mut time = D::zero();
 
-        macro_rules! yield_event {
-            ($ev:ident, $time:expr) => {
-                $ev.set_delta($time - time);
-                time = $time;
-                yield Ok($ev);
-            };
-        }
+            macro_rules! yield_event {
+                ($ev:ident, $time:expr) => {
+                    $ev.set_delta($time - time);
+                    time = $time;
+                    yield Ok($ev);
+                };
+            }
 
-        macro_rules! flush_seq_and_return {
-            ($seq:ident) => {
-                while let Some(mut ev) = $seq.next.take() {
-                    yield_event!(ev, $seq.time);
-                    unwrap!(move_next(&mut $seq));
+            macro_rules! flush_seq_and_return {
+                ($seq:ident) => {
+                    while let Some(mut ev) = $seq.next.take() {
+                        yield_event!(ev, $seq.time);
+                        unwrap!(move_next(&mut $seq));
+                    }
+                    return;
+                };
+            }
+
+            loop {
+                if seq1.next.is_none() {
+                    if seq2.next.is_none() {
+                        break;
+                    } else {
+                        flush_seq_and_return!(seq2);
+                    }
                 }
-                return;
-            };
-        }
-
-        loop {
-            if seq1.next.is_none() {
                 if seq2.next.is_none() {
-                    break;
+                    flush_seq_and_return!(seq1);
+                }
+
+                if seq1.time < seq2.time {
+                    let mut ev = seq1.next.take().unwrap();
+                    yield_event!(ev, seq1.time);
+                    unwrap!(move_next(&mut seq1));
                 } else {
-                    flush_seq_and_return!(seq2);
+                    let mut ev = seq2.next.take().unwrap();
+                    yield_event!(ev, seq2.time);
+                    unwrap!(move_next(&mut seq2));
                 }
             }
-            if seq2.next.is_none() {
-                flush_seq_and_return!(seq1);
-            }
-
-            if seq1.time < seq2.time {
-                let mut ev = seq1.next.take().unwrap();
-                yield_event!(ev, seq1.time);
-                unwrap!(move_next(&mut seq1));
-            } else {
-                let mut ev = seq2.next.take().unwrap();
-                yield_event!(ev, seq2.time);
-                unwrap!(move_next(&mut seq2));
-            }
-        }
-    })
+        },
+    )
 }
 
 struct EventMerger<D: 'static + MIDINum, E: 'static + MIDIDelta<D> + Send, Err: 'static + Send> {

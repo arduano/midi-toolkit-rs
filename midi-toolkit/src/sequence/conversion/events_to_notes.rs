@@ -100,42 +100,45 @@ pub fn events_to_notes<
 >(
     iter: I,
 ) -> impl Iterator<Item = Result<Note<D>, Err>> {
-    GenIter(move || {
-        let mut note_queue = NoteQueue::<D>::new();
+    GenIter(
+        #[coroutine]
+        move || {
+            let mut note_queue = NoteQueue::<D>::new();
 
-        let mut time = D::zero();
-        for e in iter {
-            let e = unwrap!(e);
+            let mut time = D::zero();
+            for e in iter {
+                let e = unwrap!(e);
 
-            time += e.delta;
-            match e.as_event() {
-                Event::NoteOn(e) => {
-                    let note = Note {
-                        start: time,
-                        channel: e.channel,
-                        key: e.key,
-                        velocity: e.velocity,
-                        len: D::zero(),
-                    };
+                time += e.delta;
+                match e.as_event() {
+                    Event::NoteOn(e) => {
+                        let note = Note {
+                            start: time,
+                            channel: e.channel,
+                            key: e.key,
+                            velocity: e.velocity,
+                            len: D::zero(),
+                        };
 
-                    note_queue.push(note);
-                }
-                Event::NoteOff(e) => {
-                    note_queue.end_next(e.key, e.channel, time);
-
-                    while let Some(note) = note_queue.next_ended_note() {
-                        yield Ok(note);
+                        note_queue.push(note);
                     }
-                }
-                _ => {}
-            }
-        }
+                    Event::NoteOff(e) => {
+                        note_queue.end_next(e.key, e.channel, time);
 
-        note_queue.end_all(time);
-        while let Some(note) = note_queue.next_ended_note() {
-            yield Ok(note);
-        }
-    })
+                        while let Some(note) = note_queue.next_ended_note() {
+                            yield Ok(note);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            note_queue.end_all(time);
+            while let Some(note) = note_queue.next_ended_note() {
+                yield Ok(note);
+            }
+        },
+    )
 }
 
 #[cfg(test)]
