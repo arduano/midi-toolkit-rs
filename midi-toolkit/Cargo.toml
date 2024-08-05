@@ -13,7 +13,7 @@ name = "midi_toolkit"
 
 [dependencies]
 num-traits = "0.2.14"
-derive = { path = "../midi-toolkit-derive", package = "midi-toolkit-rs-derive" }
+derive = { path = "../midi-toolkit-derive", package = "midi-toolkit-rs-derive", version = "0.1.0" }
 crossbeam-channel = "0.5.1"
 rayon = "1.5.1"
 thiserror = "1.0.38"
