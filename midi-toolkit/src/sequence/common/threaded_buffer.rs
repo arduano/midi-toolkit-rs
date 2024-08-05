@@ -1,5 +1,5 @@
 use crossbeam_channel::{bounded, unbounded, IntoIter, Sender};
-use gen_iter::GenIter;
+use crate::gen_iter::GenIter;
 use std::{
     collections::VecDeque,
     sync::{Arc, RwLock},

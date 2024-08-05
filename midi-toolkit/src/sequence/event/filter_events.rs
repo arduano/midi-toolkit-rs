@@ -1,4 +1,4 @@
-use gen_iter::GenIter;
+use crate::gen_iter::GenIter;
 
 use crate::{
     events::{Event, MIDIDelta, MIDIEventEnum},

@@ -10,7 +10,6 @@ name = "midi_toolkit"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-gen-iter = { git = "https://github.com/arduano/gen-iter.git", rev = "64e28bc" }
 num-traits = "0.2.14"
 derive = { path = "../midi-toolkit-derive", package = "midi-toolkit-rs-derive" }
 crossbeam-channel = "0.5.1"
@@ -18,4 +17,5 @@ rayon = "1.5.1"
 thiserror = "1.0.38"
 
 [dev-dependencies]
-kdmapi = { git = "https://github.com/arduano/kdmapi", rev = "a8013dd" }
+# TODO: Publish this in the future as a separate crate
+# kdmapi = { git = "https://github.com/arduano/kdmapi", rev = "a8013dd" }

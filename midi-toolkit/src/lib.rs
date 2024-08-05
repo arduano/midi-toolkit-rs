@@ -1,4 +1,5 @@
 #![feature(coroutines)]
+#![feature(coroutine_trait)]
 #![feature(associated_type_defaults)]
 #![feature(type_alias_impl_trait)]
 #![feature(impl_trait_in_assoc_type)]
@@ -6,6 +7,7 @@
 use crossbeam_channel::{Receiver, RecvError};
 
 pub mod events;
+mod gen_iter;
 pub mod io;
 pub mod notes;
 pub mod num;
