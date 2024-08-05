@@ -1,5 +1,7 @@
 [package]
 name = "midi-toolkit-rs"
+description = "A library for ultra high performance MIDI operations, designed for black MIDI. The library isn't perfect"
+license = "MIT"
 version = "0.1.0"
 edition = "2018"
 workspace = ".."
