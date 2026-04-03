@@ -6,4 +6,5 @@ I wrote this library as my first ever Rust project, and it's evolved since then 
 
 The documentation is also very patchy. I can update the documentation if someone actually needs this library and I get time to work on it.
 
-See the midi-toolkit/examples folder for some examples of how to use the library. Though last time I checked, there were errors in those files.
+See the `midi-toolkit/examples` folder for some examples of how to use the library.
+The `player` example is Windows-only at runtime and depends on the external `kdmapi` backend; outside that environment it compiles to a stub so the crate still checks cleanly under `--all-features`.

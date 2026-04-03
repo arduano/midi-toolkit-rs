@@ -27,8 +27,10 @@ rayon = "1.11"
 thiserror = "1.0.69"
 
 [dev-dependencies]
-# TODO: Publish this in the future as a separate crate
-# kdmapi = { git = "https://github.com/arduano/kdmapi", rev = "a8013dd" }
+
+[target.'cfg(windows)'.dev-dependencies]
+# Windows-only player backend used by the `player` example.
+kdmapi = { git = "https://github.com/arduano/kdmapi", rev = "a8013dd" }
 
 [[example]]
 name = "player"
