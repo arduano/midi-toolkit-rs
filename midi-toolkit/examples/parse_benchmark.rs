@@ -105,7 +105,7 @@ fn main() {
     // });
     // do_run("Write each track while cloning", repeats, || {
     //     let output = Cursor::new(Vec::<u8>::new());
-    //     let writer = MIDIWriter::new_from_stram(Box::new(output), file.ppq()).unwrap();
+    //     let writer = MIDIWriter::new_from_stream(Box::new(output), file.ppq()).unwrap();
 
     //     let iters = pipe!(loaded_tracks.iter().map(|t| pipe!(t.iter().cloned())));
     //     for track in iters {
@@ -117,7 +117,7 @@ fn main() {
     // });
     // do_run("Merge each track while cloning then write", repeats, || {
     //     let output = Cursor::new(Vec::<u8>::new());
-    //     let writer = MIDIWriter::new_from_stram(Box::new(output), file.ppq()).unwrap();
+    //     let writer = MIDIWriter::new_from_stream(Box::new(output), file.ppq()).unwrap();
 
     //     let iters =
     //         pipe!(loaded_tracks.iter().map(|t| pipe!(t.iter().cloned()|>wrap_ok()))|>to_vec());

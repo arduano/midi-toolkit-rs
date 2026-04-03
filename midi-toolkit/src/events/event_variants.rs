@@ -1,11 +1,16 @@
 use crate::events::encode_var_length_value;
 use crate::io::MIDIWriteError;
 use crate::sequence::event::Delta;
-use std::io::{Error, ErrorKind};
+use std::io::{Error, ErrorKind, Write};
 
 use super::event::Event;
 use super::{ChannelEvent, KeyEvent, MIDIEvent, MIDINum, PlaybackEvent, SerializeEvent};
 use derive::{MIDIEvent, NewEvent};
+
+fn write_all_len<T: Write>(buf: &mut T, bytes: &[u8]) -> Result<usize, MIDIWriteError> {
+    buf.write_all(bytes)?;
+    Ok(bytes.len())
+}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct MIDIColor {
@@ -62,7 +67,7 @@ pub struct NoteOnEvent {
 impl SerializeEvent for NoteOnEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let event = [0x90 | self.channel, self.key, self.velocity];
-        Ok(buf.write(&event)?)
+        write_all_len(buf, &event)
     }
 }
 
@@ -84,7 +89,7 @@ pub struct NoteOffEvent {
 impl SerializeEvent for NoteOffEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let event = [0x80 | self.channel, self.key, 0];
-        Ok(buf.write(&event)?)
+        write_all_len(buf, &event)
     }
 }
 
@@ -107,7 +112,7 @@ pub struct PolyphonicKeyPressureEvent {
 impl SerializeEvent for PolyphonicKeyPressureEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let event = [0xA0 | self.channel, self.key, self.velocity];
-        Ok(buf.write(&event)?)
+        write_all_len(buf, &event)
     }
 }
 
@@ -129,7 +134,7 @@ pub struct ControlChangeEvent {
 impl SerializeEvent for ControlChangeEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let event = [0xB0 | self.channel, self.controller, self.value];
-        Ok(buf.write(&event)?)
+        write_all_len(buf, &event)
     }
 }
 
@@ -150,7 +155,7 @@ pub struct ProgramChangeEvent {
 impl SerializeEvent for ProgramChangeEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let event = [0xC0 | self.channel, self.program];
-        Ok(buf.write(&event)?)
+        write_all_len(buf, &event)
     }
 }
 
@@ -171,7 +176,7 @@ pub struct ChannelPressureEvent {
 impl SerializeEvent for ChannelPressureEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let event = [0xD0 | self.channel, self.pressure];
-        Ok(buf.write(&event)?)
+        write_all_len(buf, &event)
     }
 }
 
@@ -197,7 +202,7 @@ impl SerializeEvent for PitchWheelChangeEvent {
             (value & 0x7F) as u8,
             ((value >> 7) & 0x7F) as u8,
         ];
-        Ok(buf.write(&event)?)
+        write_all_len(buf, &event)
     }
 }
 
@@ -217,13 +222,11 @@ pub struct SystemExclusiveMessageEvent {
 
 impl SerializeEvent for SystemExclusiveMessageEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
-        let mut vec = Vec::with_capacity(self.data.len() + 2);
+        let mut vec = Vec::with_capacity(self.data.len() + 5);
         vec.push(0xF0u8);
-        for v in self.data.iter() {
-            vec.push(*v);
-        }
-        vec.push(0xF7u8);
-        Ok(buf.write(&vec)?)
+        vec.extend(encode_var_length_value(self.data.len() as u64));
+        vec.extend(self.data.iter().copied());
+        write_all_len(buf, &vec)
     }
 }
 
@@ -235,7 +238,7 @@ pub struct UndefinedEvent {
 impl SerializeEvent for UndefinedEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let event = [self.event];
-        Ok(buf.write(&event)?)
+        write_all_len(buf, &event)
     }
 }
 
@@ -251,7 +254,7 @@ impl SerializeEvent for SongPositionPointerEvent {
             (self.position & 0x7F) as u8,
             ((self.position >> 7) & 0x7F) as u8,
         ];
-        Ok(buf.write(&event)?)
+        write_all_len(buf, &event)
     }
 }
 
@@ -263,7 +266,7 @@ pub struct SongSelectEvent {
 impl SerializeEvent for SongSelectEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let event = [0xF3, self.song];
-        Ok(buf.write(&event)?)
+        write_all_len(buf, &event)
     }
 }
 
@@ -273,7 +276,7 @@ pub struct TuneRequestEvent {}
 impl SerializeEvent for TuneRequestEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let event = [0xF6];
-        Ok(buf.write(&event)?)
+        write_all_len(buf, &event)
     }
 }
 
@@ -283,7 +286,7 @@ pub struct EndOfExclusiveEvent {}
 impl SerializeEvent for EndOfExclusiveEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let event = [0xF7];
-        Ok(buf.write(&event)?)
+        write_all_len(buf, &event)
     }
 }
 
@@ -293,7 +296,7 @@ pub struct TrackStartEvent {}
 impl SerializeEvent for TrackStartEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let event = [0xFF, 0x00, 0x02, 0x00, 0x00];
-        Ok(buf.write(&event)?)
+        write_all_len(buf, &event)
     }
 }
 
@@ -312,7 +315,7 @@ impl SerializeEvent for TextEvent {
         for v in self.bytes.iter() {
             vec.push(*v);
         }
-        Ok(buf.write(&vec)?)
+        write_all_len(buf, &vec)
     }
 }
 
@@ -331,7 +334,7 @@ impl SerializeEvent for UnknownMetaEvent {
         for v in self.bytes.iter() {
             vec.push(*v);
         }
-        Ok(buf.write(&vec)?)
+        write_all_len(buf, &vec)
     }
 }
 
@@ -360,7 +363,7 @@ pub struct ChannelPrefixEvent {
 impl SerializeEvent for ChannelPrefixEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let event = [0xFF, 0x20, 0x01, self.channel];
-        Ok(buf.write(&event)?)
+        write_all_len(buf, &event)
     }
 }
 
@@ -373,7 +376,7 @@ pub struct MIDIPortEvent {
 impl SerializeEvent for MIDIPortEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let event = [0xFF, 0x21, 0x01, self.channel];
-        Ok(buf.write(&event)?)
+        write_all_len(buf, &event)
     }
 }
 
@@ -392,7 +395,7 @@ impl SerializeEvent for TempoEvent {
             ((self.tempo >> 8) & 0xFF) as u8,
             (self.tempo & 0xFF) as u8,
         ];
-        Ok(buf.write(&event)?)
+        write_all_len(buf, &event)
     }
 }
 
@@ -417,7 +420,7 @@ impl SerializeEvent for SMPTEOffsetEvent {
             self.frames,
             self.fractional_frames,
         ];
-        Ok(buf.write(&event)?)
+        write_all_len(buf, &event)
     }
 }
 
@@ -440,7 +443,7 @@ impl SerializeEvent for TimeSignatureEvent {
             self.ticks_per_click,
             self.bb,
         ];
-        Ok(buf.write(&event)?)
+        write_all_len(buf, &event)
     }
 }
 
@@ -453,15 +456,43 @@ pub struct KeySignatureEvent {
 impl SerializeEvent for KeySignatureEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let event = [0xFF, 0x59, 0x02, self.sf, self.mi];
-        Ok(buf.write(&event)?)
+        write_all_len(buf, &event)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{ColorEvent, MIDIColor, SerializeEvent, TrackStartEvent};
+    use super::{
+        ColorEvent, MIDIColor, SerializeEvent, SystemExclusiveMessageEvent, TrackStartEvent,
+    };
     use crate::io::MIDIWriteError;
-    use std::io::ErrorKind;
+    use std::io::{ErrorKind, Write};
+
+    struct PartialWriter {
+        bytes: Vec<u8>,
+        max_write: usize,
+    }
+
+    impl PartialWriter {
+        fn new(max_write: usize) -> Self {
+            Self {
+                bytes: Vec::new(),
+                max_write,
+            }
+        }
+    }
+
+    impl Write for PartialWriter {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            let written = self.max_write.min(buf.len());
+            self.bytes.extend_from_slice(&buf[..written]);
+            Ok(written)
+        }
+
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
 
     #[test]
     fn track_start_serializes_with_two_payload_bytes() {
@@ -491,6 +522,33 @@ mod tests {
 
         match err {
             MIDIWriteError::FilesystemError(err) => assert_eq!(err.kind(), ErrorKind::Unsupported),
+            other => panic!("unexpected write error variant: {:?}", other),
         }
+    }
+
+    #[test]
+    fn sysex_serializes_as_smf_event_without_implicit_terminator() {
+        let mut buf = Vec::new();
+        SystemExclusiveMessageEvent {
+            data: vec![0x12, 0xF7, 0x34],
+        }
+        .serialize_event(&mut buf)
+        .expect("sysex should serialize");
+
+        assert_eq!(buf, vec![0xF0, 0x03, 0x12, 0xF7, 0x34]);
+    }
+
+    #[test]
+    fn serializers_handle_partial_writes() {
+        let mut buf = PartialWriter::new(1);
+
+        let note = SystemExclusiveMessageEvent {
+            data: vec![0x41, 0x42, 0x43],
+        };
+
+        note.serialize_event(&mut buf)
+            .expect("write_all should handle partial writes");
+
+        assert_eq!(buf.bytes, vec![0xF0, 0x03, 0x41, 0x42, 0x43]);
     }
 }

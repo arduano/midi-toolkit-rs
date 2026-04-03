@@ -60,7 +60,7 @@ macro_rules! unwrap {
 macro_rules! yield_error {
     ($err:expr) => {{
         yield $err;
-        panic!("Iterator requested the next item after an error occured");
+        return;
     }};
 }
 

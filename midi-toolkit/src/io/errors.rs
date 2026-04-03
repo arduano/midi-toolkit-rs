@@ -57,13 +57,18 @@ impl std::fmt::Display for MIDIParseError {
 
 #[derive(Debug, Error)]
 pub enum MIDIWriteError {
+    #[error("Filesystem error: {0}")]
     FilesystemError(#[from] std::io::Error),
-}
-
-impl std::fmt::Display for MIDIWriteError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            MIDIWriteError::FilesystemError(e) => write!(f, "Filesystem error: {e}"),
-        }
-    }
+    #[error("MIDI writer has already been ended")]
+    WriterEnded,
+    #[error("Track {track_id} has already been opened")]
+    TrackAlreadyOpened { track_id: i32 },
+    #[error("Track {track_id} has already been ended")]
+    TrackAlreadyEnded { track_id: i32 },
+    #[error("Cannot end MIDI writer while tracks are still open: {track_ids:?}")]
+    OpenTracksRemaining { track_ids: Vec<i32> },
+    #[error("Cannot end MIDI writer while there are unopened track gaps: {track_ids:?}")]
+    TrackGapsRemaining { track_ids: Vec<i32> },
+    #[error("MIDI writer track count {track_count} exceeds the SMF limit of 65535")]
+    TrackCountOverflow { track_count: usize },
 }

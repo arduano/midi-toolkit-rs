@@ -117,10 +117,12 @@ impl<T: 'static + MIDIReader> MIDIFile<T> {
         })
     }
 
-    pub fn open_track_reader(&self, track: u32) -> T::ByteReader {
-        let pos = &self.track_positions[track as usize];
-        self.reader
-            .open_reader(Some(track), pos.pos, pos.len as u64)
+    pub fn open_track_reader(&self, track: u32) -> Option<T::ByteReader> {
+        let pos = self.track_positions.get(track as usize)?;
+        Some(
+            self.reader
+                .open_reader(Some(track), pos.pos, pos.len as u64),
+        )
     }
 
     pub fn iter_all_tracks(
@@ -128,7 +130,10 @@ impl<T: 'static + MIDIReader> MIDIFile<T> {
     ) -> impl Iterator<Item = impl Iterator<Item = Result<Delta<u64, Event>, MIDIParseError>>> {
         let mut tracks = Vec::new();
         for i in 0..self.track_count() {
-            tracks.push(self.iter_track(i as u32));
+            tracks.push(
+                self.iter_track(i as u32)
+                    .expect("track iteration should exist for a known track index"),
+            );
         }
         tracks.into_iter()
     }
@@ -174,9 +179,9 @@ impl<T: 'static + MIDIReader> MIDIFile<T> {
     pub fn iter_track(
         &self,
         track: u32,
-    ) -> impl Iterator<Item = Result<Delta<u64, Event>, MIDIParseError>> {
-        let reader = self.open_track_reader(track);
-        TrackParser::new(reader)
+    ) -> Option<impl Iterator<Item = Result<Delta<u64, Event>, MIDIParseError>>> {
+        let reader = self.open_track_reader(track)?;
+        Some(TrackParser::new(reader))
     }
 
     pub fn ppq(&self) -> u16 {
@@ -231,5 +236,29 @@ impl MIDIFile<RAMReader> {
         let reader = RAMReader::new(stream)?;
 
         MIDIFile::new_from_disk_reader(reader, read_progress)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::MIDIFile;
+    use crate::io::RAMReader;
+    use std::io::Cursor;
+
+    fn single_track_midi_bytes() -> Vec<u8> {
+        vec![
+            b'M', b'T', b'h', b'd', 0x00, 0x00, 0x00, 0x06, 0x00, 0x01, 0x00, 0x01, 0x01, 0xE0,
+            b'M', b'T', b'r', b'k', 0x00, 0x00, 0x00, 0x04, 0x00, 0xFF, 0x2F, 0x00,
+        ]
+    }
+
+    #[test]
+    fn invalid_track_access_returns_none() {
+        let midi: MIDIFile<RAMReader> =
+            MIDIFile::open_from_stream_in_ram(Cursor::new(single_track_midi_bytes()), None)
+                .expect("valid midi fixture");
+
+        assert!(midi.open_track_reader(1).is_none());
+        assert!(midi.iter_track(1).is_none());
     }
 }
