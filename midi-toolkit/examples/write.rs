@@ -15,7 +15,7 @@ pub fn main() {
 
     let mut nc: u64 = 0;
     {
-        let mut track_writer = writer.open_next_track();
+        let mut track_writer = writer.try_open_next_track().unwrap();
         // let merged = pipe!(file.iter_all_tracks()|>to_vec()|>merge_events_array()|>unwrap_items());
         let converted = file.iter_all_tracks();
         // .map(|track| pipe!(track|>events_to_notes()|>notes_to_events()));

@@ -155,6 +155,7 @@ impl MIDIWriter {
         })
     }
 
+    #[deprecated(note = "use try_open_next_track")]
     pub fn open_next_track(&self) -> TrackWriter<'_> {
         self.try_open_next_track()
             .expect("failed to open next track")
@@ -179,6 +180,7 @@ impl MIDIWriter {
         })
     }
 
+    #[deprecated(note = "use try_open_track")]
     pub fn open_track(&self, track_id: i32) -> TrackWriter<'_> {
         self.try_open_track(track_id).expect("failed to open track")
     }
@@ -412,7 +414,7 @@ mod tests {
         let mut writer = MIDIWriter::new_from_stream(Box::new(shared), 480).unwrap();
         assert!(!writer.is_ended());
 
-        let mut track = writer.open_next_track();
+        let mut track = writer.try_open_next_track().unwrap();
         assert!(!track.is_ended());
 
         track.end().unwrap();
@@ -429,7 +431,7 @@ mod tests {
         let shared = SharedCursor::default();
         {
             let writer = MIDIWriter::new_from_stream(Box::new(shared.clone()), 480).unwrap();
-            let mut track = writer.open_next_track();
+            let mut track = writer.try_open_next_track().unwrap();
             track.write_bytes(&[0x00, 0x90, 0x3C, 0x40]).unwrap();
         }
 
@@ -488,7 +490,7 @@ mod tests {
         let shared = SharedCursor::default();
         {
             let writer = MIDIWriter::new_from_stream(Box::new(shared.clone()), 480).unwrap();
-            let mut track = writer.open_next_track();
+            let mut track = writer.try_open_next_track().unwrap();
             track.write_bytes(&[1, 2, 3, 4]).unwrap();
             track.end().unwrap();
         }

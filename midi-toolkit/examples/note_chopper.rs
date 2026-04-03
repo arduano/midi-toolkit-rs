@@ -55,7 +55,8 @@ fn main() {
         let merged = merge_events(flattened, non_note_events);
 
         writer
-            .open_next_track()
+            .try_open_next_track()
+            .unwrap()
             .write_events_iter(merged.unwrap_items())
             .unwrap();
     }

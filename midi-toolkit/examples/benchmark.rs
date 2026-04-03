@@ -94,7 +94,7 @@ fn main() {
 
         let iters = loaded_tracks.iter().map(|t| t.iter().cloned());
         for track in iters {
-            let mut track_writer = writer.open_next_track();
+            let mut track_writer = writer.try_open_next_track().unwrap();
             for e in track {
                 track_writer.write_event(e).unwrap();
             }
@@ -109,7 +109,7 @@ fn main() {
             .map(|t| t.iter().cloned().into_ok())
             .collect::<Vec<_>>();
         let merged = iters.into_iter().merge_all().unwrap_items();
-        let mut track_writer = writer.open_next_track();
+        let mut track_writer = writer.try_open_next_track().unwrap();
         for e in merged {
             track_writer.write_event(e).unwrap();
         }
