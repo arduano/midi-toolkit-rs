@@ -6,15 +6,7 @@ mod player_impl {
     };
 
     use kdmapi::KDMAPI;
-    use midi_toolkit::{
-        events::MIDIEvent,
-        io::MIDIFile,
-        pipe,
-        sequence::{
-            event::{cancel_tempo_events, merge_events_array, scale_event_time},
-            to_vec, unwrap_items, TimeCaster,
-        },
-    };
+    use midi_toolkit::{io::MIDIFile, prelude::*};
 
     pub fn main() {
         let midi_path = std::env::args()
@@ -23,15 +15,13 @@ mod player_impl {
 
         let midi = MIDIFile::open(midi_path, None).unwrap();
         let ppq = midi.ppq();
-        let merged = pipe!(
-            midi.iter_all_tracks()
-            |>to_vec()
-            |>merge_events_array()
-            |>TimeCaster::<f64>::cast_event_delta()
-            |>cancel_tempo_events(250000)
-            |>scale_event_time(1.0 / ppq as f64)
-            |>unwrap_items()
-        );
+        let merged = midi
+            .iter_all_tracks()
+            .merge_all()
+            .cast_event_delta::<f64>()
+            .cancel_tempo_events(250000)
+            .scale_event_time(1.0 / ppq as f64)
+            .unwrap_items();
 
         let kdmapi = KDMAPI.open_stream();
 

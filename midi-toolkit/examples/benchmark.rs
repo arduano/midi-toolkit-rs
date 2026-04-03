@@ -6,8 +6,7 @@ use std::{
 use midi_toolkit::{
     events::Event,
     io::{MIDIFile, MIDIWriter},
-    pipe,
-    sequence::{event::merge_events_array, to_vec, to_vec_result, unwrap_items, wrap_ok},
+    prelude::*,
 };
 
 fn do_run<T: Fn()>(name: &str, repeats: i32, run: T) {
@@ -39,7 +38,10 @@ fn main() {
 
     println!("Tracks: {}", file.track_count());
 
-    let loaded_tracks = to_vec(file.iter_all_tracks().map(|t| to_vec_result(t).unwrap()));
+    let loaded_tracks = file
+        .iter_all_tracks()
+        .map(|t| t.collect_vec_result().unwrap())
+        .collect::<Vec<_>>();
 
     let mut nc: u64 = 0;
     for track in loaded_tracks.iter() {
@@ -53,15 +55,15 @@ fn main() {
 
     do_run("Parse all tracks individually", repeats, || {
         for track in file.iter_all_tracks() {
-            for _ in pipe!(track) {}
+            for _ in track {}
         }
     });
     do_run("Merge all tracks together while parsing", repeats, || {
-        let merged = pipe!(file.iter_all_tracks()|>to_vec()|>merge_events_array());
+        let merged = file.iter_all_tracks().merge_all();
         for _ in merged {}
     });
     do_run("Clone all events", repeats, || {
-        let iters = pipe!(loaded_tracks.iter().map(|t| pipe!(t.iter().cloned())));
+        let iters = loaded_tracks.iter().map(|t| t.iter().cloned());
         for track in iters {
             for _ in track {}
         }
@@ -70,25 +72,27 @@ fn main() {
         "Clone all events, then wrap and unwrap them in Result",
         repeats,
         || {
-            let iters = pipe!(loaded_tracks
+            let iters = loaded_tracks
                 .iter()
-                .map(|t| pipe!(t.iter().cloned()|>wrap_ok()|>unwrap_items())));
+                .map(|t| t.iter().cloned().into_ok().unwrap_items());
             for track in iters {
                 for _ in track {}
             }
         },
     );
     do_run("Merge all tracks together while cloning", repeats, || {
-        let iters =
-            pipe!(loaded_tracks.iter().map(|t| pipe!(t.iter().cloned()|>wrap_ok()))|>to_vec());
-        let merged = pipe!(iters|>merge_events_array());
+        let iters = loaded_tracks
+            .iter()
+            .map(|t| t.iter().cloned().into_ok())
+            .collect::<Vec<_>>();
+        let merged = iters.into_iter().merge_all();
         for _ in merged {}
     });
     do_run("Write each track while cloning", repeats, || {
         let output = Cursor::new(Vec::<u8>::new());
         let writer = MIDIWriter::new_from_stream(Box::new(output), file.ppq()).unwrap();
 
-        let iters = pipe!(loaded_tracks.iter().map(|t| pipe!(t.iter().cloned())));
+        let iters = loaded_tracks.iter().map(|t| t.iter().cloned());
         for track in iters {
             let mut track_writer = writer.open_next_track();
             for e in track {
@@ -100,9 +104,11 @@ fn main() {
         let output = Cursor::new(Vec::<u8>::new());
         let writer = MIDIWriter::new_from_stream(Box::new(output), file.ppq()).unwrap();
 
-        let iters =
-            pipe!(loaded_tracks.iter().map(|t| pipe!(t.iter().cloned()|>wrap_ok()))|>to_vec());
-        let merged = pipe!(iters|>merge_events_array()|>unwrap_items());
+        let iters = loaded_tracks
+            .iter()
+            .map(|t| t.iter().cloned().into_ok())
+            .collect::<Vec<_>>();
+        let merged = iters.into_iter().merge_all().unwrap_items();
         let mut track_writer = writer.open_next_track();
         for e in merged {
             track_writer.write_event(e).unwrap();

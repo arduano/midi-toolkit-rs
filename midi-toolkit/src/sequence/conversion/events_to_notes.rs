@@ -143,12 +143,7 @@ pub fn events_to_notes<
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        events::Event,
-        notes::Note,
-        pipe,
-        sequence::{conversion::events_to_notes, to_vec_result, wrap_ok},
-    };
+    use crate::{events::Event, notes::Note, prelude::*};
 
     #[test]
     fn convert_events_to_notes() {
@@ -162,12 +157,12 @@ mod tests {
             Event::new_delta_note_off_event(80.0f64, 1, 64),
         ];
 
-        let changed = pipe! {
-            events.into_iter()
-            |>wrap_ok()
-            |>events_to_notes()
-            |>to_vec_result().unwrap()
-        };
+        let changed = events
+            .into_iter()
+            .into_ok()
+            .events_to_notes()
+            .collect_vec_result()
+            .unwrap();
 
         let expected = vec![
             Note {

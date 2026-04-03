@@ -9,11 +9,7 @@ pub fn unwrap_items<T: Debug, E: Debug, I: Iterator<Item = Result<T, E>> + Sized
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        events::Event,
-        pipe,
-        sequence::{to_vec, unwrap_items},
-    };
+    use crate::{events::Event, prelude::*};
 
     #[test]
     #[should_panic]
@@ -24,11 +20,7 @@ mod tests {
             Err(()),
         ];
 
-        pipe! {
-            events.into_iter()
-            |>unwrap_items()
-            |>to_vec()
-        };
+        let _ = events.into_iter().unwrap_items().collect::<Vec<_>>();
     }
 
     #[test]
@@ -38,11 +30,7 @@ mod tests {
             Ok(Event::new_delta_note_off_event(50.0f64, 0, 64)),
         ];
 
-        let changed = pipe! {
-            events.into_iter()
-            |>unwrap_items()
-            |>to_vec()
-        };
+        let changed = events.into_iter().unwrap_items().collect::<Vec<_>>();
 
         assert_eq!(
             changed,

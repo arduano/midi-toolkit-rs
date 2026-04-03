@@ -103,12 +103,7 @@ pub fn notes_to_events<D: MIDINum, N: MIDINote<D>, Err>(
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        events::Event,
-        notes::Note,
-        pipe,
-        sequence::{conversion::notes_to_events, to_vec_result, wrap_ok},
-    };
+    use crate::{events::Event, notes::Note, prelude::*};
 
     #[test]
     fn convert_notes_to_events() {
@@ -136,12 +131,12 @@ mod tests {
             },
         ];
 
-        let changed = pipe! {
-            events.into_iter()
-            |>wrap_ok()
-            |>notes_to_events()
-            |>to_vec_result().unwrap()
-        };
+        let changed = events
+            .into_iter()
+            .into_ok()
+            .notes_to_events()
+            .collect_vec_result()
+            .unwrap();
 
         let expected = vec![
             Event::new_delta_note_on_event(100.0f64, 0, 64, 127),

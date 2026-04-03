@@ -1,11 +1,6 @@
 use std::time::Instant;
 
-use midi_toolkit::{
-    events::Event,
-    io::MIDIFile,
-    pipe,
-    sequence::{event::merge_events_array, to_vec, unwrap_items},
-};
+use midi_toolkit::{events::Event, io::MIDIFile, prelude::*};
 
 pub fn main() {
     println!("Opening midi...");
@@ -13,7 +8,7 @@ pub fn main() {
     println!("Parsing midi...");
     let now = Instant::now();
     let mut poly: u64 = 0;
-    let merged = pipe!(file.iter_all_tracks()|>to_vec()|>merge_events_array()|>unwrap_items());
+    let merged = file.iter_all_tracks().merge_all().unwrap_items();
 
     let mut max_poly: u64 = 0;
 

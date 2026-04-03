@@ -8,11 +8,7 @@ use crate::{
 /// Similar to [`scale_event_time`](crate::sequence::event::scale_event_time), except does `new_delta = old_delta * to / from`.
 /// ## Example
 ///```
-///use midi_toolkit::{
-///    events::Event,
-///    pipe,
-///    sequence::{event::scale_event_ppq, to_vec_result, wrap_ok},
-///};
+///use midi_toolkit::{events::Event, prelude::*};
 ///
 ///let events = vec![
 ///    Event::new_delta_note_on_event(100.0f64, 0, 64, 127),
@@ -21,12 +17,12 @@ use crate::{
 ///    Event::new_delta_note_off_event(80.0f64, 0, 64),
 ///];
 ///
-///let changed = pipe! {
-///    events.into_iter()
-///    |>wrap_ok()
-///    |>scale_event_ppq(64.0, 96.0)
-///    |>to_vec_result().unwrap()
-///};
+///let changed = events
+///    .into_iter()
+///    .into_ok()
+///    .scale_event_ppq(64.0, 96.0)
+///    .collect_vec_result()
+///    .unwrap();
 ///
 ///assert_eq!(
 ///    changed,
@@ -58,11 +54,7 @@ pub fn scale_event_ppq<
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        events::Event,
-        pipe,
-        sequence::{event::scale_event_ppq, to_vec_result, wrap_ok},
-    };
+    use crate::{events::Event, prelude::*};
 
     #[test]
     fn delta_change() {
@@ -73,12 +65,12 @@ mod tests {
             Event::new_delta_note_off_event(80.0f64, 0, 64),
         ];
 
-        let changed = pipe! {
-            events.into_iter()
-            |>wrap_ok()
-            |>scale_event_ppq(64.0, 96.0)
-            |>to_vec_result().unwrap()
-        };
+        let changed = events
+            .into_iter()
+            .into_ok()
+            .scale_event_ppq(64.0, 96.0)
+            .collect_vec_result()
+            .unwrap();
 
         assert_eq!(
             changed,
@@ -100,12 +92,12 @@ mod tests {
             Event::new_delta_note_off_event(80, 0, 64),
         ];
 
-        let changed = pipe! {
-            events.into_iter()
-            |>wrap_ok()
-            |>scale_event_ppq(64, 96)
-            |>to_vec_result().unwrap()
-        };
+        let changed = events
+            .into_iter()
+            .into_ok()
+            .scale_event_ppq(64, 96)
+            .collect_vec_result()
+            .unwrap();
 
         assert_eq!(
             changed,
@@ -127,12 +119,12 @@ mod tests {
             Event::new_delta_note_off_event(80, 0, 64),
         ];
 
-        let changed = pipe! {
-            events.into_iter()
-            |>wrap_ok()
-            |>scale_event_ppq(3, 2)
-            |>to_vec_result().unwrap()
-        };
+        let changed = events
+            .into_iter()
+            .into_ok()
+            .scale_event_ppq(3, 2)
+            .collect_vec_result()
+            .unwrap();
 
         assert_eq!(
             changed,

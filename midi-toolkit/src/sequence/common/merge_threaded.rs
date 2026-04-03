@@ -1,6 +1,4 @@
-use crate::pipe;
-
-use super::{threaded_buffer, to_vec};
+use super::threaded_buffer;
 
 pub trait MergableStreams {
     type Item: Send + 'static;
@@ -42,15 +40,10 @@ pub fn grouped_multithreaded_merge<T: MergableStreams>(
             iterator_groups[i].push(iter);
         }
 
-        let mut iterator_groups = pipe!(
-            iterator_groups.into_iter()
-            .map(|g| pipe!(
-                g
-                |>T::merge_array()
-                |>threaded_buffer(buffer_size)
-            ))
-            |>to_vec()
-        );
+        let mut iterator_groups = iterator_groups
+            .into_iter()
+            .map(|g| threaded_buffer(T::merge_array(g), buffer_size))
+            .collect::<Vec<_>>();
 
         let mut new_groups = Vec::new();
         while iterator_groups.len() > 1 {

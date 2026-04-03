@@ -3,8 +3,7 @@ use std::time::Instant;
 use midi_toolkit::{
     events::{Event, MIDIEventEnum},
     io::MIDIFile,
-    pipe,
-    sequence::unwrap_items,
+    prelude::*,
 };
 
 pub fn main() {
@@ -14,7 +13,7 @@ pub fn main() {
     let mut nc: u64 = 0;
 
     println!("Creating parsers...");
-    let merged = pipe!(file.iter_all_track_events_merged()|>unwrap_items());
+    let merged = file.iter_all_track_events_merged().unwrap_items();
     println!("Parsing midi...");
 
     for e in merged {

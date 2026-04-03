@@ -3,11 +3,7 @@ use std::time::{Duration, Instant};
 use midi_toolkit::{
     events::{Event, MIDIEventEnum},
     io::MIDIFile,
-    pipe,
-    sequence::{
-        event::{cancel_tempo_events, get_channels_array_statistics, scale_event_time},
-        unwrap_items, TimeCaster,
-    },
+    prelude::*,
 };
 
 fn do_run(name: &str, repeats: i32, run: impl Fn() -> u64) {
@@ -42,26 +38,23 @@ fn main() {
     println!("Tracks: {}", file.track_count());
 
     // Make windows cache stuff
-    let tracks = file.iter_all_tracks().collect();
-    let stats = get_channels_array_statistics(tracks).unwrap();
+    let stats = file.iter_all_tracks().channel_statistics().unwrap();
 
     println!("Note count: {}", stats.note_count());
 
     do_run("Parse tracks in parallel", repeats, || {
-        let tracks = file.iter_all_tracks().collect();
-        let stats = get_channels_array_statistics(tracks).unwrap();
+        let stats = file.iter_all_tracks().channel_statistics().unwrap();
         stats.note_count()
     });
 
     do_run("Iter event batches merged", repeats, || {
         let ppq = file.ppq();
-        let merged = pipe!(
-            file.iter_all_track_events_merged_batches()
-            |>TimeCaster::<f64>::cast_event_delta()
-            |>cancel_tempo_events(250000)
-            |>scale_event_time(1.0 / ppq as f64)
-            |>unwrap_items()
-        );
+        let merged = file
+            .iter_all_track_events_merged_batches()
+            .cast_event_delta::<f64>()
+            .cancel_tempo_events(250000)
+            .scale_event_time(1.0 / ppq as f64)
+            .unwrap_items();
 
         let mut note_count = 0;
         for batch in merged {

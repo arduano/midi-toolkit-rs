@@ -13,6 +13,16 @@ pub mod sequence;
 
 pub use crate::gen_iter::{GenIter, GenIterReturn};
 
+pub mod prelude {
+    pub use crate::events::{MIDIDelta, MIDIEvent, MIDIEventEnum};
+    pub use crate::notes::MIDINote;
+    pub use crate::sequence::{
+        EventSequenceCollectionExt, EventSequenceExt, IntoOkExt, NoteSequenceCollectionExt,
+        NoteSequenceExt, ResultIterExt,
+    };
+}
+
+#[deprecated(note = "use extension traits from midi_toolkit::prelude instead")]
 #[macro_export]
 macro_rules! pipe {
     ($var:tt |> $function: ident($($params: expr),*) $($calls:tt)*) => {

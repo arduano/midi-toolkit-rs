@@ -5,7 +5,7 @@ use crate::{events::MIDIDelta, num::MIDINum};
 /// Similar to [`scale_event_ppq`](crate::sequence::event::scale_event_ppq), except only takes the multiplier.
 /// ## Example
 ///```
-///use midi_toolkit::{events::Event, pipe, sequence::{event::scale_event_time, to_vec_result, wrap_ok}};
+///use midi_toolkit::{events::Event, prelude::*};
 ///
 ///let events = vec![
 ///    Event::new_delta_note_on_event(100.0f64, 0, 64, 127),
@@ -14,12 +14,12 @@ use crate::{events::MIDIDelta, num::MIDINum};
 ///    Event::new_delta_note_off_event(80.0f64, 0, 64),
 ///];
 ///
-///let changed = pipe! {
-///    events.into_iter()
-///    |>wrap_ok()
-///    |>scale_event_time(1.5)
-///    |>to_vec_result().unwrap()
-///};
+///let changed = events
+///    .into_iter()
+///    .into_ok()
+///    .scale_event_time(1.5)
+///    .collect_vec_result()
+///    .unwrap();
 ///
 ///assert_eq!(
 ///    changed,
@@ -50,11 +50,7 @@ pub fn scale_event_time<
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        events::Event,
-        pipe,
-        sequence::{event::scale_event_time, to_vec_result, wrap_ok},
-    };
+    use crate::{events::Event, prelude::*};
 
     #[test]
     fn time_change() {
@@ -65,12 +61,12 @@ mod tests {
             Event::new_delta_note_off_event(80.0f64, 0, 64),
         ];
 
-        let changed = pipe! {
-            events.into_iter()
-            |>wrap_ok()
-            |>scale_event_time(1.5)
-            |>to_vec_result().unwrap()
-        };
+        let changed = events
+            .into_iter()
+            .into_ok()
+            .scale_event_time(1.5)
+            .collect_vec_result()
+            .unwrap();
 
         assert_eq!(
             changed,
@@ -92,13 +88,12 @@ mod tests {
             Event::new_delta_note_off_event(80, 0, 64),
         ];
 
-        let changed = pipe! {
-            events.into_iter()
-            |>wrap_ok()
-            |>scale_event_time(2)
-            |>to_vec_result()
-            .unwrap()
-        };
+        let changed = events
+            .into_iter()
+            .into_ok()
+            .scale_event_time(2)
+            .collect_vec_result()
+            .unwrap();
 
         assert_eq!(
             changed,

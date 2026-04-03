@@ -3,8 +3,7 @@ use std::time::Instant;
 use midi_toolkit::{
     events::Event,
     io::{MIDIFile, MIDIWriter},
-    pipe,
-    sequence::{event::merge_events_array, to_vec, unwrap_items},
+    prelude::*,
 };
 
 pub fn main() {
@@ -20,7 +19,7 @@ pub fn main() {
         // let merged = pipe!(file.iter_all_tracks()|>to_vec()|>merge_events_array()|>unwrap_items());
         let converted = file.iter_all_tracks();
         // .map(|track| pipe!(track|>events_to_notes()|>notes_to_events()));
-        let merged = pipe!(converted|>to_vec()|>merge_events_array()|>unwrap_items());
+        let merged = converted.merge_all().unwrap_items();
         for e in merged {
             if let Event::NoteOn(_) = *e {
                 nc += 1

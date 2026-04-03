@@ -5,8 +5,7 @@ use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterato
 use crate::{
     events::{Event, MIDIDelta, MIDIEventEnum, TempoEvent},
     num::MIDINum,
-    pipe,
-    sequence::{event::merge_events_array, to_vec, to_vec_result, wrap_ok},
+    prelude::*,
 };
 
 use super::Delta;
@@ -202,15 +201,26 @@ pub fn get_channels_array_statistics<
         .map(|iter| get_channel_statistics(iter));
     let mut result = Vec::new();
     pool.collect_into_vec(&mut result);
-    let mut channels = pipe!(result.into_iter()|>to_vec_result())?;
+    let mut channels = result.into_iter().collect_vec_result()?;
 
     let tempo_vecs: Vec<_> = channels.iter().map(|c| c.tempo_events.clone()).collect();
-    let tempo_iterators = tempo_vecs
+    let tempo_iterators: Vec<_> = tempo_vecs
         .into_iter()
-        .map(|tempos| pipe!(tempos.iter().cloned()|>wrap_ok()|>to_vec().into_iter()))
+        .map(|tempos| {
+            tempos
+                .iter()
+                .cloned()
+                .into_ok()
+                .collect::<Vec<_>>()
+                .into_iter()
+        })
         .collect();
 
-    let merge = pipe!(tempo_iterators|>merge_events_array()|>to_vec_result().unwrap());
+    let merge = tempo_iterators
+        .into_iter()
+        .merge_all()
+        .collect_vec_result()
+        .unwrap();
 
     let tempo_events: Arc<[Delta<D, TempoEvent>]> = merge.into();
 

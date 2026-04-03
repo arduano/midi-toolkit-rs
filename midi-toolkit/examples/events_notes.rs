@@ -1,11 +1,6 @@
 use std::time::Instant;
 
-use midi_toolkit::{
-    events::Event,
-    io::MIDIFile,
-    pipe,
-    sequence::{event::merge_events_array, to_vec, unwrap_items},
-};
+use midi_toolkit::{events::Event, io::MIDIFile, prelude::*};
 
 pub fn main() {
     println!("Opening midi...");
@@ -24,7 +19,7 @@ pub fn main() {
     //         }
     //     }
     // }
-    let merged = pipe!(file.iter_all_tracks()|>to_vec()|>merge_events_array()|>unwrap_items());
+    let merged = file.iter_all_tracks().merge_all().unwrap_items();
 
     for e in merged {
         if let Event::NoteOn(_) = *e {
