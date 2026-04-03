@@ -1,6 +1,7 @@
 use crate::events::encode_var_length_value;
 use crate::io::MIDIWriteError;
 use crate::sequence::event::Delta;
+use std::io::{Error, ErrorKind};
 
 use super::event::Event;
 use super::{ChannelEvent, KeyEvent, MIDIEvent, MIDINum, PlaybackEvent, SerializeEvent};
@@ -291,7 +292,7 @@ pub struct TrackStartEvent {}
 
 impl SerializeEvent for TrackStartEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
-        let event = [0xFF, 0x00, 0x02];
+        let event = [0xFF, 0x00, 0x02, 0x00, 0x00];
         Ok(buf.write(&event)?)
     }
 }
@@ -343,7 +344,10 @@ pub struct ColorEvent {
 
 impl SerializeEvent for ColorEvent {
     fn serialize_event<T: std::io::Write>(&self, _buf: &mut T) -> Result<usize, MIDIWriteError> {
-        todo!();
+        Err(MIDIWriteError::FilesystemError(Error::new(
+            ErrorKind::Unsupported,
+            "ColorEvent serialization is not supported",
+        )))
     }
 }
 
@@ -450,5 +454,43 @@ impl SerializeEvent for KeySignatureEvent {
     fn serialize_event<T: std::io::Write>(&self, buf: &mut T) -> Result<usize, MIDIWriteError> {
         let event = [0xFF, 0x59, 0x02, self.sf, self.mi];
         Ok(buf.write(&event)?)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ColorEvent, MIDIColor, SerializeEvent, TrackStartEvent};
+    use crate::io::MIDIWriteError;
+    use std::io::ErrorKind;
+
+    #[test]
+    fn track_start_serializes_with_two_payload_bytes() {
+        let mut buf = Vec::new();
+        TrackStartEvent {}
+            .serialize_event(&mut buf)
+            .expect("track start should serialize");
+
+        assert_eq!(buf, vec![0xFF, 0x00, 0x02, 0x00, 0x00]);
+    }
+
+    #[test]
+    fn color_event_returns_typed_unsupported_error() {
+        let mut buf = Vec::new();
+        let err = ColorEvent {
+            channel: 0,
+            col: MIDIColor {
+                r: 1,
+                g: 2,
+                b: 3,
+                a: 4,
+            },
+            col2: None,
+        }
+        .serialize_event(&mut buf)
+        .expect_err("color serialization should not panic");
+
+        match err {
+            MIDIWriteError::FilesystemError(err) => assert_eq!(err.kind(), ErrorKind::Unsupported),
+        }
     }
 }

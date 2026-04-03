@@ -1,7 +1,7 @@
 #![feature(coroutines)]
 
-use gen_iter::GenIter;
 use midi_toolkit::{
+    gen_iter,
     io::{MIDIFile, MIDIWriter},
     notes::{MIDINote, Note},
     pipe,
@@ -14,7 +14,7 @@ use midi_toolkit::{
 };
 
 fn chop_note(note: Note<u64>, chop_size: u64) -> impl Iterator<Item = Note<u64>> {
-    GenIter(move || {
+    gen_iter!(move {
         let mut pos = note.start;
         while pos < note.end() {
             let start = pos;

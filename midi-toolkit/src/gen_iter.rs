@@ -40,7 +40,7 @@ where
 /// ```
 /// #![feature(coroutines)]
 ///
-/// use gen_iter::gen_iter;
+/// use midi_toolkit::gen_iter;
 ///
 /// let mut g = gen_iter!({
 ///     yield 1;
@@ -55,13 +55,13 @@ where
 #[macro_export]
 macro_rules! gen_iter {
     ($block: block) => {
-        $crate::gen_iter::GenIter(
+        $crate::GenIter(
             #[coroutine]
             || $block,
         )
     };
     (move $block: block) => {
-        $crate::gen_iter::GenIter(
+        $crate::GenIter(
             #[coroutine]
             move || $block,
         )
@@ -103,7 +103,7 @@ impl<G: Coroutine + Unpin> GenIterReturn<G> {
 /// ```compile_fail
 /// // !!INVALID CODE!!
 /// # #![feature(coroutines)]
-/// # use gen_iter::gen_iter_return;
+/// # use midi_toolkit::gen_iter_return;
 /// let mut g = gen_iter_return!({ yield 1; return "done"; });
 /// for v in g {} // invalid, because `GenIterReturn<G>` is not `Iterator`
 /// let ret = g.return_or_self(); // g is dropped after for loop
@@ -140,7 +140,7 @@ impl<G: Coroutine + Unpin> From<G> for GenIterReturn<G> {
 /// ```
 /// #![feature(coroutines)]
 ///
-/// use gen_iter::gen_iter_return;
+/// use midi_toolkit::gen_iter_return;
 ///
 /// let mut g = gen_iter_return!({
 ///     yield 1;
@@ -156,13 +156,13 @@ impl<G: Coroutine + Unpin> From<G> for GenIterReturn<G> {
 #[macro_export]
 macro_rules! gen_iter_return {
     ($block: block) => {
-        $crate::gen_iter::GenIterReturn::new(
+        $crate::GenIterReturn::new(
             #[coroutine]
             || $block,
         )
     };
     (move $block: block) => {
-        $crate::gen_iter::GenIterReturn::new(
+        $crate::GenIterReturn::new(
             #[coroutine]
             move || $block,
         )

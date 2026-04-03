@@ -191,6 +191,8 @@ impl<T: TrackReader> TrackParser<T> {
                     match command {
                         0x00 => {
                             assert_len!(2);
+                            self.read_fast()?;
+                            self.read_fast()?;
                             ret!(Event::new_delta_track_start_event(delta))
                         }
                         0x01..=0x0A | 0xF7 => {
@@ -296,5 +298,38 @@ impl<T: TrackReader> Iterator for TrackParser<T> {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::TrackParser;
+    use crate::{
+        events::{Event, NoteOnEvent},
+        io::FullRamTrackReader,
+    };
+
+    #[test]
+    fn track_start_consumes_its_payload_bytes() {
+        let reader = FullRamTrackReader::new_from_vec(
+            None,
+            vec![0x00, 0xFF, 0x00, 0x02, 0x12, 0x34, 0x00, 0x90, 0x3C, 0x40],
+        );
+        let mut parser = TrackParser::new(reader);
+
+        let track_start = parser.next().unwrap().unwrap();
+        assert!(matches!(track_start.event, Event::TrackStart(_)));
+
+        let note_on = parser.next().unwrap().unwrap();
+        assert!(matches!(
+            note_on.event,
+            Event::NoteOn(NoteOnEvent {
+                channel: 0,
+                key: 0x3C,
+                velocity: 0x40,
+            })
+        ));
+
+        assert!(parser.next().is_none());
     }
 }

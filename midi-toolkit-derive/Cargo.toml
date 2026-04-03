@@ -4,6 +4,10 @@ description = "The derive library for the midi-toolkit-rs crate"
 license = "MIT"
 version = "0.1.0"
 edition = "2018"
+rust-version = "1.75"
+repository = "https://github.com/arduano/midi-toolkit-rs"
+homepage = "https://github.com/arduano/midi-toolkit-rs"
+documentation = "https://docs.rs/midi-toolkit-rs-derive"
 workspace = ".."
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -12,8 +16,8 @@ workspace = ".."
 proc-macro = true
 
 [dependencies]
-num-traits = "0.2.14"
-syn = "1"
+num-traits = "0.2.19"
+syn = "1.0.109"
 quote = "1"
 proc-macro2 = { version = "1", default-features = false }
 proc-macro-error = "1.0"

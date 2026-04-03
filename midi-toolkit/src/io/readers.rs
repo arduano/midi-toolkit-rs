@@ -132,10 +132,7 @@ impl RAMReader {
             Ok(length) => {
                 let max_supported: u64 = 2147483648;
                 if length > max_supported {
-                    panic!(
-                        "The maximum length allowed for a memory loaded MIDI file is {}",
-                        max_supported
-                    );
+                    return Err(MIDILoadError::FileTooBig);
                 }
 
                 let mut bytes = vec![0; length as usize];
@@ -398,20 +395,17 @@ impl DiskTrackReader {
 
 impl TrackReader for DiskTrackReader {
     fn read(&mut self) -> Result<u8, MIDIParseError> {
-        match self.buffer {
-            None => {
-                if let Some(next) = self.receive_next_buffer() {
-                    self.buffer = Some(next?);
-                } else {
-                    return Err(MIDIParseError::UnexpectedTrackEnd {
-                        track_number: self.track_number,
-                        track_start: self.start,
-                        expected_track_end: self.start + self.len,
-                        found_track_end: self.pos(),
-                    });
-                }
+        if self.buffer.is_none() {
+            if let Some(next) = self.receive_next_buffer() {
+                self.buffer = Some(next?);
+            } else {
+                return Err(MIDIParseError::UnexpectedTrackEnd {
+                    track_number: self.track_number,
+                    track_start: self.start,
+                    expected_track_end: self.start + self.len,
+                    found_track_end: self.pos(),
+                });
             }
-            Some(_) => {}
         }
 
         let buffer = self.buffer.as_ref().unwrap();
@@ -439,5 +433,46 @@ impl TrackReader for DiskTrackReader {
 
     fn track_number(&self) -> Option<u32> {
         self.track_number
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::RAMReader;
+    use crate::io::errors::MIDILoadError;
+    use std::io::{Read, Seek, SeekFrom};
+
+    struct OversizedReader {
+        pos: u64,
+        len: u64,
+    }
+
+    impl Read for OversizedReader {
+        fn read(&mut self, _buf: &mut [u8]) -> std::io::Result<usize> {
+            panic!("RAMReader::new should reject oversized files before reading")
+        }
+    }
+
+    impl Seek for OversizedReader {
+        fn seek(&mut self, pos: SeekFrom) -> std::io::Result<u64> {
+            self.pos = match pos {
+                SeekFrom::Start(pos) => pos,
+                SeekFrom::End(0) => self.len,
+                SeekFrom::Current(0) => self.pos,
+                _ => panic!("unexpected seek request in oversized reader test"),
+            };
+            Ok(self.pos)
+        }
+    }
+
+    #[test]
+    fn ram_reader_returns_file_too_big_error() {
+        let err = RAMReader::new(OversizedReader {
+            pos: 0,
+            len: 2_147_483_649,
+        })
+        .expect_err("oversized RAM MIDI should error");
+
+        assert!(matches!(err, MIDILoadError::FileTooBig));
     }
 }

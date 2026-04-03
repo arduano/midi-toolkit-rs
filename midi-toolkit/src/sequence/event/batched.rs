@@ -95,7 +95,7 @@ impl<E: MIDIEventEnum> BatchTempo for EventBatch<E> {
         let new = self
             .events
             .into_iter()
-            .filter(|e| e.as_event().inner_tempo().is_some())
+            .filter(|e| e.as_event().inner_tempo().is_none())
             .collect::<Vec<_>>();
 
         if new.is_empty() {
@@ -165,4 +165,33 @@ pub fn flatten_track_batches_to_events<D: MIDINum, E: MIDIEvent, Err>(
             }
         },
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::EventBatch;
+    use crate::events::{BatchTempo, Event, NoteOnEvent, TempoEvent};
+
+    #[test]
+    fn without_tempo_keeps_non_tempo_events() {
+        let batch = EventBatch::new(vec![
+            Event::Tempo(Box::new(TempoEvent { tempo: 500000 })),
+            Event::NoteOn(NoteOnEvent {
+                channel: 0,
+                key: 64,
+                velocity: 127,
+            }),
+        ]);
+
+        let filtered = batch.without_tempo().unwrap();
+        assert_eq!(filtered.count(), 1);
+        assert!(matches!(
+            filtered.into_iter_inner().next(),
+            Some(Event::NoteOn(NoteOnEvent {
+                channel: 0,
+                key: 64,
+                velocity: 127,
+            }))
+        ));
+    }
 }

@@ -1,7 +1,5 @@
 #![feature(coroutines)]
 #![feature(coroutine_trait)]
-#![feature(associated_type_defaults)]
-#![feature(type_alias_impl_trait)]
 #![feature(impl_trait_in_assoc_type)]
 
 use crossbeam_channel::{Receiver, RecvError};
@@ -12,6 +10,8 @@ pub mod io;
 pub mod notes;
 pub mod num;
 pub mod sequence;
+
+pub use crate::gen_iter::{GenIter, GenIterReturn};
 
 #[macro_export]
 macro_rules! pipe {

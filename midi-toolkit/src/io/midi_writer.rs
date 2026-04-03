@@ -116,7 +116,7 @@ impl MIDIWriter {
         Ok(self.write_u16_at(10, ppq)?)
     }
 
-    pub fn open_next_track(&self) -> TrackWriter {
+    pub fn open_next_track(&self) -> TrackWriter<'_> {
         let track_id = {
             let mut tracks = self.tracks.lock().unwrap();
             let track_id = tracks.next_init_track;
@@ -126,7 +126,7 @@ impl MIDIWriter {
         self.open_track(track_id)
     }
 
-    pub fn open_track(&self, track_id: i32) -> TrackWriter {
+    pub fn open_track(&self, track_id: i32) -> TrackWriter<'_> {
         self.add_opened_track(track_id);
         TrackWriter {
             midi_writer: self,
@@ -168,7 +168,7 @@ impl MIDIWriter {
     }
 
     pub fn is_ended(&self) -> bool {
-        self.output.is_some()
+        self.output.is_none()
     }
 }
 
@@ -217,7 +217,7 @@ impl<'a> TrackWriter<'a> {
     }
 
     pub fn is_ended(&self) -> bool {
-        self.writer.is_some()
+        self.writer.is_none()
     }
 
     pub fn get_writer_mut(&mut self) -> &mut impl Write {
@@ -253,7 +253,7 @@ impl<'a> TrackWriter<'a> {
 
 impl<'a> Drop for TrackWriter<'a> {
     fn drop(&mut self) {
-        if self.is_ended() {
+        if !self.is_ended() {
             match self.end() {
                 Ok(()) => {}
                 Err(e) => {
@@ -266,7 +266,7 @@ impl<'a> Drop for TrackWriter<'a> {
 
 impl Drop for MIDIWriter {
     fn drop(&mut self) {
-        if self.is_ended() {
+        if !self.is_ended() {
             match self.end() {
                 Ok(()) => {}
                 Err(e) => {
@@ -274,5 +274,81 @@ impl Drop for MIDIWriter {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{MIDIWriter, WriteSeek};
+    use std::{
+        io::{Cursor, Seek, SeekFrom, Write},
+        sync::{Arc, Mutex},
+    };
+
+    #[derive(Clone, Default)]
+    struct SharedCursor {
+        inner: Arc<Mutex<Cursor<Vec<u8>>>>,
+    }
+
+    impl SharedCursor {
+        fn bytes(&self) -> Vec<u8> {
+            self.inner.lock().unwrap().get_ref().clone()
+        }
+    }
+
+    impl Write for SharedCursor {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            self.inner.lock().unwrap().write(buf)
+        }
+
+        fn flush(&mut self) -> std::io::Result<()> {
+            self.inner.lock().unwrap().flush()
+        }
+    }
+
+    impl Seek for SharedCursor {
+        fn seek(&mut self, pos: SeekFrom) -> std::io::Result<u64> {
+            self.inner.lock().unwrap().seek(pos)
+        }
+    }
+
+    impl WriteSeek for SharedCursor {}
+
+    #[test]
+    fn is_ended_matches_writer_lifecycle() {
+        let shared = SharedCursor::default();
+        let mut writer = MIDIWriter::new_from_stram(Box::new(shared), 480).unwrap();
+        assert!(!writer.is_ended());
+
+        let mut track = writer.open_next_track();
+        assert!(!track.is_ended());
+
+        track.end().unwrap();
+        assert!(track.is_ended());
+        drop(track);
+        assert!(!writer.is_ended());
+
+        writer.end().unwrap();
+        assert!(writer.is_ended());
+    }
+
+    #[test]
+    fn drop_still_finalizes_open_writers() {
+        let shared = SharedCursor::default();
+        {
+            let writer = MIDIWriter::new_from_stram(Box::new(shared.clone()), 480).unwrap();
+            let mut track = writer.open_next_track();
+            track.write_bytes(&[0x00, 0x90, 0x3C, 0x40]).unwrap();
+        }
+
+        let bytes = shared.bytes();
+        assert_eq!(&bytes[0..4], b"MThd");
+        assert_eq!(&bytes[10..12], &[0x00, 0x01]);
+        assert_eq!(&bytes[14..18], b"MTrk");
+        assert_eq!(&bytes[18..22], &[0x00, 0x00, 0x00, 0x08]);
+        assert_eq!(
+            &bytes[22..30],
+            &[0x00, 0x90, 0x3C, 0x40, 0x00, 0xFF, 0x2F, 0x00]
+        );
     }
 }

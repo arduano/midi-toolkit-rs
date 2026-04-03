@@ -6,4 +6,6 @@ I wrote this library as my first ever Rust project, and it's evolved since then 
 
 The documentation is also very patchy. I can update the documentation if someone actually needs this library and I get time to work on it.
 
-See the midi-toolkit/examples folder for some examples of how to use the library. Though last time I checked, there were errors in those files.
+This crate still requires nightly Rust for coroutine support.
+
+See the `midi-toolkit/examples` folder for usage examples. The `player` example is intentionally gated behind the `player-example` feature because it depends on an unpublished external crate.
