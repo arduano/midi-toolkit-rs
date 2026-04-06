@@ -10,10 +10,10 @@ use super::{
     common::{to_vec_result, unwrap_items, wrap_ok, TimeCaster},
     conversion::{events_to_notes, notes_to_events},
     event::{
-        cancel_tempo_events, convert_events_into_batches, filter_events, filter_non_note_events,
-        filter_note_events, get_channel_statistics, get_channels_array_statistics,
-        into_track_events, merge_events_array, scale_event_ppq, scale_event_time,
-        ChannelGroupStatistics, ChannelStatistics, Delta, EventBatch, Track,
+        cancel_tempo_events, convert_events_into_batches, filter_events, filter_map_events,
+        filter_non_note_events, filter_note_events, get_channel_statistics,
+        get_channels_array_statistics, into_track_events, merge_events_array, scale_event_ppq,
+        scale_event_time, ChannelGroupStatistics, ChannelStatistics, Delta, EventBatch, Track,
     },
     note::merge_notes_iterator,
 };
@@ -76,6 +76,13 @@ pub trait EventSequenceExt<D: MIDINum, E, Err>:
         Delta<D, E>: MIDIEventEnum + MIDIDelta<D>,
     {
         filter_events(self, predicate)
+    }
+
+    fn filter_map_events<NE>(
+        self,
+        mapper: impl FnMut(E) -> Option<NE>,
+    ) -> impl Iterator<Item = Result<Delta<D, NE>, Err>> {
+        filter_map_events(self, mapper)
     }
 
     fn filter_note_events(self) -> impl Iterator<Item = Result<Delta<D, E>, Err>>

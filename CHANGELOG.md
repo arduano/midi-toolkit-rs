@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1
+
+- Added `filter_map_events` to the event sequence adapters and extension traits, with delta carry semantics for dropped events.
+
 ## 0.3.0
 
 - Added `InterleavedTempFile` as a shared temporary backing store with independent virtual streams and readers.

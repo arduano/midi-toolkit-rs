@@ -2,7 +2,7 @@
 name = "midi-toolkit-rs-derive"
 description = "The derive library for the midi-toolkit-rs crate"
 license = "MIT"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2018"
 rust-version = "1.75"
 repository = "https://github.com/arduano/midi-toolkit-rs"

@@ -87,7 +87,7 @@ dependencies = [
 
 [[package]]
 name = "midi-toolkit-rs"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "crossbeam-channel",
  "kdmapi",
@@ -99,7 +99,7 @@ dependencies = [
 
 [[package]]
 name = "midi-toolkit-rs-derive"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "convert_case",
  "num-traits",
