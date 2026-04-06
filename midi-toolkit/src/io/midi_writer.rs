@@ -1,5 +1,4 @@
 use std::{
-    collections::{HashMap, HashSet},
     fs::File,
     io::{self, copy, Cursor, Read, Seek, SeekFrom, Write},
     sync::Mutex,
@@ -7,7 +6,12 @@ use std::{
 
 use crate::events::SerializeEventWithDelta;
 
-use super::errors::MIDIWriteError;
+use super::{
+    errors::MIDIWriteError,
+    writer_common::{
+        encode_u16, write_midi_header, write_track_header, OrderedTrackRegistry, TrackByteSink,
+    },
+};
 
 pub trait WriteSeek: Write + Seek {}
 impl WriteSeek for File {}
@@ -18,50 +22,18 @@ pub struct QueuedOutput {
     length: u32,
 }
 
-struct TrackStatus {
-    opened_tracks: HashSet<i32>,
-    written_tracks: HashSet<i32>,
-    next_init_track: i32,
-    next_write_track: i32,
-    queued_writes: HashMap<i32, QueuedOutput>,
-}
-
 pub struct MIDIWriter {
     output: Option<Mutex<Box<dyn WriteSeek>>>,
-    tracks: Mutex<TrackStatus>,
+    tracks: Mutex<OrderedTrackRegistry<QueuedOutput>>,
 }
 
 pub struct TrackWriter<'a> {
     midi_writer: &'a MIDIWriter,
-    track_id: i32,
-    writer: Option<Cursor<Vec<u8>>>,
-}
-
-fn sorted_track_ids(tracks: &HashSet<i32>) -> Vec<i32> {
-    let mut ids = tracks.iter().copied().collect::<Vec<_>>();
-    ids.sort_unstable();
-    ids
-}
-
-fn encode_u16(val: u16) -> [u8; 2] {
-    let mut bytes = [0; 2];
-    bytes[0] = ((val >> 8) & 0xff) as u8;
-    bytes[1] = (val & 0xff) as u8;
-    bytes
-}
-
-fn encode_u32(val: u32) -> [u8; 4] {
-    let mut bytes = [0; 4];
-    bytes[0] = ((val >> 24) & 0xff) as u8;
-    bytes[1] = ((val >> 16) & 0xff) as u8;
-    bytes[2] = ((val >> 8) & 0xff) as u8;
-    bytes[3] = (val & 0xff) as u8;
-    bytes
+    track: TrackByteSink<Cursor<Vec<u8>>>,
 }
 
 fn flush_track(writer: &mut dyn WriteSeek, mut output: QueuedOutput) -> Result<(), io::Error> {
-    writer.write_all("MTrk".as_bytes())?;
-    writer.write_all(&encode_u32(output.length))?;
+    write_track_header(writer, output.length)?;
     copy(&mut output.write, writer)?;
     Ok(())
 }
@@ -77,21 +49,11 @@ impl MIDIWriter {
         ppq: u16,
     ) -> Result<MIDIWriter, MIDIWriteError> {
         output.seek(SeekFrom::Start(0))?;
-        output.write_all("MThd".as_bytes())?;
-        output.write_all(&encode_u32(6))?;
-        output.write_all(&encode_u16(1))?;
-        output.write_all(&encode_u16(0))?;
-        output.write_all(&encode_u16(ppq))?;
+        write_midi_header(output.as_mut(), 1, 0, ppq)?;
 
         Ok(MIDIWriter {
             output: Some(Mutex::new(output)),
-            tracks: Mutex::new(TrackStatus {
-                opened_tracks: HashSet::new(),
-                next_init_track: 0,
-                next_write_track: 0,
-                queued_writes: HashMap::new(),
-                written_tracks: HashSet::new(),
-            }),
+            tracks: Mutex::new(OrderedTrackRegistry::new()),
         })
     }
 
@@ -140,18 +102,11 @@ impl MIDIWriter {
             return Err(MIDIWriteError::WriterEnded);
         }
 
-        let track_id = tracks.next_init_track;
-        if tracks.written_tracks.contains(&track_id) || tracks.opened_tracks.contains(&track_id) {
-            return Err(MIDIWriteError::TrackAlreadyOpened { track_id });
-        }
-
-        tracks.next_init_track += 1;
-        tracks.opened_tracks.insert(track_id);
+        let track_id = tracks.open_next_track()?;
 
         Ok(TrackWriter {
             midi_writer: self,
-            track_id,
-            writer: Some(Cursor::new(Vec::new())),
+            track: TrackByteSink::new(track_id, Cursor::new(Vec::new())),
         })
     }
 
@@ -167,16 +122,11 @@ impl MIDIWriter {
         }
 
         let mut tracks = self.tracks.lock().unwrap();
-        if tracks.written_tracks.contains(&track_id) || tracks.opened_tracks.contains(&track_id) {
-            return Err(MIDIWriteError::TrackAlreadyOpened { track_id });
-        }
-
-        tracks.opened_tracks.insert(track_id);
+        tracks.open_track(track_id)?;
 
         Ok(TrackWriter {
             midi_writer: self,
-            track_id,
-            writer: Some(Cursor::new(Vec::new())),
+            track: TrackByteSink::new(track_id, Cursor::new(Vec::new())),
         })
     }
 
@@ -190,43 +140,8 @@ impl MIDIWriter {
             return Err(MIDIWriteError::WriterEnded);
         }
 
-        let (open_tracks, missing_tracks, track_count) = {
-            let tracks = self.tracks.lock().unwrap();
-            if !tracks.opened_tracks.is_empty() {
-                (
-                    Some(sorted_track_ids(&tracks.opened_tracks)),
-                    None,
-                    tracks.written_tracks.len(),
-                )
-            } else if !tracks.queued_writes.is_empty() {
-                let max_track = *tracks
-                    .queued_writes
-                    .keys()
-                    .max()
-                    .expect("queued_writes checked to be non-empty");
-                let mut missing = (0..max_track)
-                    .filter(|track_id| !tracks.written_tracks.contains(track_id))
-                    .collect::<Vec<_>>();
-                missing.sort_unstable();
-                (None, Some(missing), tracks.written_tracks.len())
-            } else {
-                (None, None, tracks.written_tracks.len())
-            }
-        };
-
-        if let Some(track_ids) = open_tracks {
-            return Err(MIDIWriteError::OpenTracksRemaining { track_ids });
-        }
-
-        if let Some(track_ids) = missing_tracks {
-            return Err(MIDIWriteError::TrackGapsRemaining { track_ids });
-        }
-
-        if track_count > u16::MAX as usize {
-            return Err(MIDIWriteError::TrackCountOverflow { track_count });
-        }
-
-        self.write_ntrks(track_count as u16)?;
+        let track_count = self.tracks.lock().unwrap().finalize_track_count()?;
+        self.write_ntrks(track_count)?;
         self.output.take();
 
         Ok(())
@@ -243,67 +158,35 @@ impl MIDIWriter {
 
 impl<'a> TrackWriter<'a> {
     fn writer_mut(&mut self) -> Result<&mut Cursor<Vec<u8>>, MIDIWriteError> {
-        let track_id = self.track_id;
-        self.writer
-            .as_mut()
-            .ok_or(MIDIWriteError::TrackAlreadyEnded { track_id })
+        self.track.writer_mut()
     }
 
     pub fn end(&mut self) -> Result<(), MIDIWriteError> {
-        if self.is_ended() {
-            return Err(MIDIWriteError::TrackAlreadyEnded {
-                track_id: self.track_id,
-            });
-        }
-
-        self.write_bytes(&[0x00, 0xFF, 0x2F, 0x00])?;
-
-        let length = self
-            .writer
-            .as_ref()
-            .expect("writer presence was checked above")
-            .position() as u32;
-
-        let mut status = self.midi_writer.tracks.lock().unwrap();
-        if !status.opened_tracks.remove(&self.track_id) {
-            return Err(MIDIWriteError::TrackAlreadyEnded {
-                track_id: self.track_id,
-            });
-        }
-        status.written_tracks.insert(self.track_id);
-
-        let mut writer = self
-            .writer
-            .take()
-            .ok_or(MIDIWriteError::TrackAlreadyEnded {
-                track_id: self.track_id,
-            })?;
+        let track_id = self.track.track_id();
+        let (mut writer, length) = self.track.finish()?;
         writer.seek(SeekFrom::Start(0))?;
 
-        status.queued_writes.insert(
-            self.track_id,
-            QueuedOutput {
-                write: Box::new(writer),
-                length,
-            },
-        );
+        let queued_outputs = {
+            let mut status = self.midi_writer.tracks.lock().unwrap();
+            status.finish_track(
+                track_id,
+                QueuedOutput {
+                    write: Box::new(writer),
+                    length,
+                },
+            )?;
+            status.drain_ready_tracks()
+        };
 
-        if self.track_id == status.next_write_track {
+        if !queued_outputs.is_empty() {
             let output = self
                 .midi_writer
                 .output
                 .as_ref()
                 .ok_or(MIDIWriteError::WriterEnded)?;
             let mut writer = output.lock().unwrap();
-            loop {
-                let next_write_track = status.next_write_track;
-                match status.queued_writes.remove_entry(&next_write_track) {
-                    None => break,
-                    Some(output) => {
-                        flush_track(writer.as_mut(), output.1)?;
-                        status.next_write_track += 1;
-                    }
-                }
+            for (_, queued_output) in queued_outputs {
+                flush_track(writer.as_mut(), queued_output)?;
             }
         }
 
@@ -311,7 +194,7 @@ impl<'a> TrackWriter<'a> {
     }
 
     pub fn is_ended(&self) -> bool {
-        self.writer.is_none()
+        self.track.is_ended()
     }
 
     pub fn get_writer_mut(&mut self) -> &mut impl Write {
@@ -323,32 +206,25 @@ impl<'a> TrackWriter<'a> {
         &mut self,
         event: T,
     ) -> Result<usize, MIDIWriteError> {
-        let writer = self.writer_mut()?;
-        event.serialize_event_with_delta(writer)
+        self.track.write_event(event)
     }
 
     pub fn write_events_iter<T: SerializeEventWithDelta>(
         &mut self,
         events: impl Iterator<Item = T>,
     ) -> Result<usize, MIDIWriteError> {
-        let mut count = 0;
-        for event in events {
-            count += self.write_event(event)?;
-        }
-        Ok(count)
+        self.track.write_events_iter(events)
     }
 
     pub fn write_bytes(&mut self, bytes: &[u8]) -> Result<usize, MIDIWriteError> {
-        let writer = self.writer_mut()?;
-        writer.write_all(bytes)?;
-        Ok(bytes.len())
+        self.track.write_bytes(bytes)
     }
 }
 
 impl<'a> std::fmt::Debug for TrackWriter<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("TrackWriter")
-            .field("track_id", &self.track_id)
+            .field("track_id", &self.track.track_id())
             .field("is_ended", &self.is_ended())
             .finish()
     }

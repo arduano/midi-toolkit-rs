@@ -59,16 +59,30 @@ impl std::fmt::Display for MIDIParseError {
 pub enum MIDIWriteError {
     #[error("Filesystem error: {0}")]
     FilesystemError(#[from] std::io::Error),
+    #[error("Virtual file error: {0}")]
+    VirtualFileError(#[from] VirtualFileError),
     #[error("MIDI writer has already been ended")]
     WriterEnded,
     #[error("Track {track_id} has already been opened")]
     TrackAlreadyOpened { track_id: i32 },
     #[error("Track {track_id} has already been ended")]
     TrackAlreadyEnded { track_id: i32 },
+    #[error("Track id {track_id} is invalid; track ids must be non-negative")]
+    InvalidTrackId { track_id: i32 },
+    #[error("Track {track_id} length {length} exceeds the SMF limit of 4294967295 bytes")]
+    TrackLengthOverflow { track_id: i32, length: u64 },
     #[error("Cannot end MIDI writer while tracks are still open: {track_ids:?}")]
     OpenTracksRemaining { track_ids: Vec<i32> },
     #[error("Cannot end MIDI writer while there are unopened track gaps: {track_ids:?}")]
     TrackGapsRemaining { track_ids: Vec<i32> },
     #[error("MIDI writer track count {track_count} exceeds the SMF limit of 65535")]
     TrackCountOverflow { track_count: usize },
+}
+
+#[derive(Debug, Error)]
+pub enum VirtualFileError {
+    #[error("Filesystem error: {0}")]
+    FilesystemError(#[from] std::io::Error),
+    #[error("Virtual stream {stream_id} was not found")]
+    UnknownStream { stream_id: u64 },
 }

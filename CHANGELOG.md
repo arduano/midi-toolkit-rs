@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0
+
+- Added `InterleavedTempFile` as a shared temporary backing store with independent virtual streams and readers.
+- Added `StagedMIDIWriter` for writing track data into a `.parts.*` sidecar before assembling the final MIDI file.
+- Refactored `MIDIWriter` and `StagedMIDIWriter` onto a shared internal track-writing abstraction to reduce duplicate logic.
+- Added concurrency, ordering, and stress coverage for the new temporary file and staged writer paths.
+- Tightened writer validation so negative track ids now return a typed `InvalidTrackId` error.
+- Expanded `MIDIWriteError` with explicit virtual-file and track-length failure modes.
+
 ## 0.2.0
 
 - Added extension-trait based sequence APIs through `midi_toolkit::prelude::*`.

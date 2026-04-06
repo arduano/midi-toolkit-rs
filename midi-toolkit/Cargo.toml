@@ -2,7 +2,7 @@
 name = "midi-toolkit-rs"
 description = "A library for ultra high performance MIDI operations, designed for black MIDI. The library isn't perfect"
 license = "MIT"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2018"
 rust-version = "1.75"
 repository = "https://github.com/arduano/midi-toolkit-rs"
@@ -21,7 +21,7 @@ player-example = []
 
 [dependencies]
 num-traits = "0.2.19"
-derive = { path = "../midi-toolkit-derive", package = "midi-toolkit-rs-derive", version = "0.2.0" }
+derive = { path = "../midi-toolkit-derive", package = "midi-toolkit-rs-derive", version = "0.3.0" }
 crossbeam-channel = "0.5.15"
 rayon = "1.11"
 thiserror = "1.0.69"
